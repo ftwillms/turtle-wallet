@@ -50,6 +50,13 @@ This project can be built with `pyinstaller`, if required. This will most likely
 
 Feel free to submit a pull request, it will be reviewed and feedback given.
 
+**Things that need doing**
+* Hooking up of UI for sending TRTL (ui done, just needs backend doing)
+* Automatically launching and closing walletd
+* Settings
+* About page
+* Things marked with TODO in the code
+
 ## Authors
 
 * **CodIsAFish** - *Initial work* - [CaptainMeatloaf](https://github.com/CaptainMeatloaf)

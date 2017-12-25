@@ -6,7 +6,7 @@ A python-based wallet for TurtleCoin (TRTL)
 """
 
 __author__ = "CodIsAFish"
-__credits__ = ["CodIsAFish"]
+__credits__ = ["CodIsAFish", "RockSteady"]
 __license__ = "LGPLv3"
 __version__ = "0.1.0"
 __maintainer__ = "CodIsAFish"

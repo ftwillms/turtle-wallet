@@ -14,6 +14,7 @@ import tzlocal
 from __init__ import __version__
 import global_variables
 
+
 class MainWindow(object):
     """
     This class is used to interact with the MainWindow glade file
@@ -27,6 +28,20 @@ class MainWindow(object):
         self.builder.get_object("AddressTextBox")
         Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(self.builder.get_object("AddressTextBox").get_text(), -1)
 
+    def on_AboutMenuItem_activate(self, object, data=None):
+        """Called by GTK when the 'About' menu item is clicked"""
+        # Get the about dialog from the builder
+        about_dialog = self.builder.get_object("AboutDialog")
+
+        # Set the version on the about dialog to correspond to that of the init file
+        about_dialog.set_version("v{0}".format(__version__))
+
+        # Run the dialog and await for it's response (in this case to be closed)
+        about_dialog.run()
+
+        # Hide the dialog upon it's closure
+        about_dialog.hide()
+
     def update_loop(self):
         """
         This method loops infinitely and refreshes the UI every 5 seconds.
@@ -34,7 +49,9 @@ class MainWindow(object):
         Note:
             More optimal differential method of reloading transactions
             is required, as currently you can't really scroll through them
-            without it jumping back to the top when it clears the list"""
+            without it jumping back to the top when it clears the list.
+            Likely solution would be a hidden (or not) column with the
+            transaction hash."""
         while True:
             GLib.idle_add(self.refresh_values) # Refresh the values, calling the method via GLib
             time.sleep(5) # Wait 5 seconds before doing it again

@@ -1,4 +1,4 @@
-# TurtleWallet
+# turtle-wallet
 
 A GUI wallet for [TurtleCoin](https://github.com/turtlecoin/turtlecoin), based on `walletd`.
 

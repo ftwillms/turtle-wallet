@@ -44,6 +44,7 @@ class SplashScreen(object):
             global_variables.wallet_connection = WalletConnection(global_variables.wallet_file,
                                                                   global_variables.wallet_password)
         except ValueError as e:
+            print("Failed to connect to walletd: {}".format(e))
             GLib.idle_add(self.update_status, "Failed to connect to walletd")
             time.sleep(3)
             Gtk.main_quit()

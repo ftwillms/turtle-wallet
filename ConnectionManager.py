@@ -77,7 +77,7 @@ class WalletConnection(object):
             self.walletd.wait()
 
     def __init__(self, wallet_file, password):
-        if not os.path.isfile(wallet_file) or 1==1:
+        if not os.path.isfile(wallet_file):
             raise ValueError("Cannot find wallet file at: {}".format(wallet_file))
         self.walletd = self.start_wallet_daemon(wallet_file, password)
         self.rpc_connection = RPCConnection("http://127.0.0.1:8070/json_rpc")

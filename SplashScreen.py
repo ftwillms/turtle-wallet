@@ -40,9 +40,10 @@ class SplashScreen(object):
         time.sleep(1)
         GLib.idle_add(self.update_status, "Connecting to walletd")
         # Initialise the wallet connection
-        global_variables.wallet_connection = WalletConnection()
+        global_variables.wallet_connection = WalletConnection(global_variables.wallet_file,
+                                                              global_variables.wallet_password)
         time.sleep(1)
-        GLib.idle_add(self.update_status, "Sucessfully connected to walletd")
+        GLib.idle_add(self.update_status, "Successfully connected to walletd")
         time.sleep(1)
         # Open the main window using glib
         GLib.idle_add(self.open_main_window)
@@ -79,4 +80,3 @@ class SplashScreen(object):
         # Start the wallet initialisation on a new thread
         thread = threading.Thread(target=self.initialise)
         thread.start()
-        

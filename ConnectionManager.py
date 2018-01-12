@@ -8,6 +8,12 @@ connections, currently just to Walletd.
 import json
 import psutil
 import requests
+from requests import ConnectionError
+
+import time
+import os
+import os.path
+from subprocess import Popen
 
 class WalletConnection(object):
     """
@@ -21,16 +27,35 @@ class WalletConnection(object):
         else:
             raise Exception("No RPC connection has been established!")
 
-    def __init__(self):
-        for proc in psutil.process_iter(): # Search the running process list for walletd
-            if proc.name() == "walletd":
-                # Initialise the RPC connection
-                self.rpc_connection = RPCConnection("http://127.0.0.1:8070/json_rpc")
-                #Test the RPC connection
-                self.rpc_connection.request("getStatus")
-                return
+    def get_wallet_daemon_path(self):
+        walletd_filename = "walletd" if os.name != 'nt' else "walletd.exe"
+        walletd_exec = os.path.join(os.getenv('TURTLE_HOME', '.'), walletd_filename)
+        if not os.path.isfile(walletd_exec):
+            raise ValueError("Cannot find wallet at location: {}".format(walletd_exec))
 
-        raise Exception("Walletd not running")
+        return walletd_exec
+
+    def stop_wallet_daemon(self):
+        if self.walletd:
+            self.walletd.terminate()
+            # Let's loop until walletd no longer is running, we'll give it 3 strikes.
+            time_to_kill = 0
+            while self.walletd.poll() is None:
+                time_to_kill += 1
+                time.sleep(1)
+                print("Waiting on walletd to terminate...")
+                if time_to_kill == 3:
+                    self.walletd.kill()
+                    print("FATALITY!")
+
+    def __init__(self, wallet_file, password):
+        self.rpc_connection = RPCConnection("http://127.0.0.1:8070/json_rpc")
+        if not os.path.isfile(wallet_file):
+            raise ValueError("Cannot find wallet file at: {}".format(wallet_file))
+        self.walletd = Popen([self.get_wallet_daemon_path(),
+                              '-w', wallet_file,
+                              '-p', password,
+                              '--local'])
 
 class RPCConnection(object):
     """
@@ -54,11 +79,39 @@ class RPCConnection(object):
 
         self.id += 1 # Increment the ID by one ready for the next call
 
-        # Make the request to the endpoint with specified data
-        response = requests.post(self.url, data=json.dumps(payload), headers=self.headers).json()
+        try:
+            # Make the request to the endpoint with specified data
+            response = requests.post(self.url, data=json.dumps(payload), headers=self.headers).json()
 
-        # Check if the response returned an error, and extract and wrap it in an exception if it has
-        if 'error' in response:
-            raise Exception("Connection to Walletd RPC failed with error: {0} {1}".format(response['error']['code'], response['error']['message']))
-        else:
+            # Check if the response returned an error, and extract and wrap it in an exception if it has
+            if 'error' in response:
+                print("Failed to talk to server: %s" % (response,))
+                #raise Exception("Connection to Walletd RPC failed with error: {0} {1}".format(response['error']['code'], response['error']['message']))
+            else:
+                print("RESPONSE: %s" % response)
             return response
+        except ConnectionError as e:
+            raise ValueError("Failed to talk to wallet daemon!")
+
+
+def open_wallet():
+    """Opens the wallet, this should only be run off the main thread."""
+    wallet = None
+    try:
+        wallet = WalletConnection()
+        while True:
+            # Check if walletd is actually running
+            if not wallet.walletd.poll():
+                response = wallet.request("getStatus")
+                if 'error' in response:
+                    print("Still waiting for daemon response...")
+                    time.sleep(2)
+                else:
+                    break
+            else:
+                print("Waiting for the daemon to start...")
+                time.sleep(2)
+    except Exception as e:
+        print("Unable to establish connection to wallet, is walletd running?")
+        print("%s" % e)
+    return wallet

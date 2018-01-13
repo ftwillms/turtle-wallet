@@ -43,6 +43,69 @@ class MainWindow(object):
         # Hide the dialog upon it's closure
         about_dialog.hide()
 
+    def on_SendButton_clicked(self, object, data=None):
+        """
+        Fired when the send button is clicked.
+        Attempts to validate inputs and displays label text for erroneous entries.
+        On success, populates label with transaction hash.
+        :param object:
+        :param data:
+        :return:
+        """
+        # Capture target address and validating
+        target_address = self.builder.get_object("RecipientAddressEntry").get_text()
+        if not target_address.startswith('TRTL') or len(target_address) <= 50:
+            self.builder.get_object("TransactionStatusLabel")\
+                .set_label("The address doesn't look right, are you sure it's a TRTL address?")
+            return
+        source_address = self.builder.get_object("AddressTextBox").get_text()
+
+        # More address validating
+        if target_address == source_address:
+            self.builder.get_object("TransactionStatusLabel") \
+                .set_label("Are you trying to send yourself TRTL? Is that even possible?")
+            return
+
+        # Capturing amount value and validating
+        try:
+            amount = int(float(self.builder.get_object("AmountEntry").get_text())*100)
+            if amount <= 0:
+                raise ValueError("Amount is an invalid number")
+        except ValueError as e:
+            print("Invalid amount: %s" % e)
+            self.builder.get_object("TransactionStatusLabel")\
+                .set_label("Slow down TRTL bro! The amount needs to be a number greater than 0.")
+            return
+        # Mixin
+        mixin = int(self.builder.get_object("MixinSpinButton").get_text())
+        body = {
+            'anonymity': mixin,
+            'fee': 10, # 0.1
+            'transfers': [{'amount': amount, 'address': target_address}],
+        }
+        try:
+            resp = global_variables.wallet_connection.request("sendTransaction", params=body)
+            self.builder.get_object("TransactionStatusLabel").set_label(resp['transactionHash'])
+            self.clear_send_ui()
+        except ConnectionError as e:
+            print("Failed to connect to daemon: {}".format(e))
+            self.builder.get_object("TransactionStatusLabel") \
+                .set_label("Failed to send: cannot connect to server.")
+        except ValueError as e:
+            print("Server request error: {}".format(e))
+            self.builder.get_object("TransactionStatusLabel") \
+                .set_label("Failed: {}".format(e))
+
+
+    def clear_send_ui(self):
+        """
+        Clear the inputs within the send transaction frame
+        :return:
+        """
+        self.builder.get_object("RecipientAddressEntry").set_text('')
+        self.builder.get_object("MixinSpinButton").set_value(0)
+        self.builder.get_object("AmountEntry").set_text('')
+
     def update_loop(self):
         """
         This method loops infinitely and refreshes the UI every 5 seconds.
@@ -143,6 +206,9 @@ class MainWindow(object):
         # Set the window title to reflect the current version
         self.window.set_title("TurtleWallet v{0}".format(__version__))
 
+        # Setup the transaction spin button
+        self.setup_spin_button()
+
         # Start the UI update loop in a new thread
         self.update_thread = threading.Thread(target=self.update_loop)
         self.update_thread.daemon = True
@@ -150,3 +216,17 @@ class MainWindow(object):
 
         # Finally, show the window
         self.window.show_all()
+
+    def setup_spin_button(self):
+        """
+        Setup spin button:
+        initial value => 0,
+        base value => 0,
+        max value => 30,
+        increment => 1,
+        page_incr and  page_size set to 1, not sure how these properties are used though
+        """
+        adjustment = Gtk.Adjustment(0, 0, 31, 1, 1, 1)
+        spin_button = self.builder.get_object("MixinSpinButton")
+        spin_button.configure(adjustment, 1, 0)
+

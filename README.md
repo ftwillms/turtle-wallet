@@ -18,25 +18,31 @@ It also has the following prerequisites, installed via `pip`
 * requests
 * tzlocal
 
-Note that these have only been tested on ubuntu, let me know if anything else is required on Windows.
+__WINDOWS__: PyGObject instructions for Windows requires MSYS to be running. Some of the python packages are not permitted on this
+platform and additionally it adds some overhead to development. This [installer](https://sourceforge.net/projects/pygobjectwin32/) installs the required GTK libs natively.
+The installer contains a wizard which will guide you through selecting which python environment and from there you have options of which libs
+you want installed: look for the GTK and glade options.
 
 ### Running
 
-Getting this wallet running is easy.
-
-Before starting, make sure `walletd` is running and **fully synced**.
-
-An example launch command for `walletd` that means you do not have to start the daemon (ie, `Turtlecoind`) alongside it would be as follows:
-```
-./walletd -w <wallet file name> -p <wallet password> --local
-```
-
 **Note: opening your wallet with `walletd` renders it no longer readable by `simplewallet`. Please make a backup, as always.**
 
-Having installed the prerequisites and made sure `walletd` is running, you can start it from a terminal
+Getting this wallet running is easy.
+
+* Set TURTLE_HOME to the directory containing walletd __OR__ place a copy of walletd in the current working directory.
+* Alternatively, you may still run walletd separately, if you use a custom URI:
+   - `export DAEMON_PORT` - default is 8070
+   - `export DAEMON_HOST` - default is http://127.0.0.1
+   - An example launch command for `walletd` that means you do not have to start the daemon (ie, `Turtlecoind`) alongside it would be as follows:
+        ```
+        ./walletd -w <wallet file name> -p <wallet password> --local
+        ```
+Having installed the prerequisites, you can start it from a terminal:
 
 ```
-python start.py
+# WINDOWS users would use SET instead of export here
+export TURTLE_HOME=/users/myuser/TurtleCoin-linux/
+python start.py -w <wallet file location> -p <wallet password>
 ```
 
 And everything should start up as intended, provided you installed everything correctly.
@@ -52,7 +58,6 @@ Feel free to submit a pull request, it will be reviewed and feedback given.
 
 **Things that need doing**
 * Hooking up of UI for sending TRTL (ui done, just needs backend doing)
-* Automatically launching and closing walletd
 * Settings
 * About page
 * Things marked with TODO in the code

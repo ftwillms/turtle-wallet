@@ -52,7 +52,7 @@ class SplashScreen(object):
             # This should guarantee us that the daemon is running and synchronized before the main
             # window opens.
             while True:
-                time.sleep(1)
+                time.sleep(1.5)
                 try:
                     resp = global_variables.wallet_connection.request('getStatus')
                     block_count = resp['blockCount']

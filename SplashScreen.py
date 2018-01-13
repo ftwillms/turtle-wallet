@@ -15,6 +15,8 @@ import global_variables
 from requests import ConnectionError
 from MainWindow import MainWindow
 
+# Maximum attempts to talk to the wallet daemon before giving up
+MAX_FAIL_COUNT = 10
 
 class SplashScreen(object):
     """
@@ -62,7 +64,7 @@ class SplashScreen(object):
                 except ConnectionError as e:
                     fail_count += 1
                     print("ConnectionError while waiting for daemon to start: {}".format(e))
-                    if fail_count >= global_variables.MAX_FAIL_COUNT:
+                    if fail_count >= MAX_FAIL_COUNT:
                         raise ValueError("Can't communicate to daemon")
 
         except ValueError as e:

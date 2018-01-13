@@ -73,6 +73,7 @@ class WalletConnection(object):
         :return:
         """
         if self.walletd:
+            r = self.request("save")
             self.walletd.terminate()
             self.walletd.wait()
 

@@ -52,9 +52,9 @@ class SplashScreen(object):
             # This should guarantee us that the daemon is running and synchronized before the main
             # window opens.
             while True:
+                time.sleep(1)
                 try:
                     resp = global_variables.wallet_connection.request('getStatus')
-                    time.sleep(1)
                     block_count = resp['blockCount']
                     known_block_count = resp['knownBlockCount']
                     GLib.idle_add(self.update_status, "Syncing... [{} / {}]".format(block_count, known_block_count))

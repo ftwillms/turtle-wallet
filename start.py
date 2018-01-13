@@ -16,8 +16,8 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-w', '--wallet', help='Wallet file location')
-parser.add_argument('-p', '--password', help='Wallet password')
+parser.add_argument('-w', '--wallet', help='Wallet file location', required=True)
+parser.add_argument('-p', '--password', help='Wallet password', required=True)
 args = parser.parse_args()
 
 global_variables.wallet_file = args.wallet

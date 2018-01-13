@@ -12,7 +12,9 @@ from gi.repository import Gtk, GLib
 from __init__ import __version__
 from ConnectionManager import WalletConnection
 import global_variables
+from requests import ConnectionError
 from MainWindow import MainWindow
+
 
 class SplashScreen(object):
     """
@@ -40,15 +42,34 @@ class SplashScreen(object):
         time.sleep(1)
         GLib.idle_add(self.update_status, "Connecting to walletd")
         # Initialise the wallet connection
+        # If we fail to talk to the server so many times, it's hopeless
+        fail_count = 0
         try:
             global_variables.wallet_connection = WalletConnection(wallet_file, wallet_password)
+            # Loop until the known block count is greater than or equal to the block count.
+            # This should guarantee us that the daemon is running and synchronized before the main
+            # window opens.
+            while True:
+                try:
+                    resp = global_variables.wallet_connection.request('getStatus')
+                    time.sleep(1)
+                    block_count = resp['blockCount']
+                    known_block_count = resp['knownBlockCount']
+                    GLib.idle_add(self.update_status, "Syncing... [{} / {}]".format(known_block_count, block_count))
+                    if block_count <= known_block_count:
+                        GLib.idle_add(self.update_status, "Wallet is synced, opening...")
+                        break
+                except ConnectionError as e:
+                    fail_count += 1
+                    print("ConnectionError while waiting for daemon to start: {}".format(e))
+                    if fail_count >= global_variables.MAX_FAIL_COUNT:
+                        raise ValueError("Can't communicate to daemon")
+
         except ValueError as e:
             print("Failed to connect to walletd: {}".format(e))
-            GLib.idle_add(self.update_status, "Failed to connect to walletd")
+            GLib.idle_add(self.update_status, "Failed: {}".format(e))
             time.sleep(3)
             Gtk.main_quit()
-        time.sleep(1)
-        GLib.idle_add(self.update_status, "Successfully connected to walletd")
         time.sleep(1)
         # Open the main window using glib
         GLib.idle_add(self.open_main_window)

@@ -31,7 +31,7 @@ class SplashScreen(object):
         main_window = MainWindow() # Initialise the main window
         self.window.destroy() # Destroy the splash screen window
 
-    def initialise(self):
+    def initialise(self, wallet_file, wallet_password):
         """Initialises the connection to the wallet
             Note: Wallet must already be running at this point"""
 
@@ -41,8 +41,7 @@ class SplashScreen(object):
         GLib.idle_add(self.update_status, "Connecting to walletd")
         # Initialise the wallet connection
         try:
-            global_variables.wallet_connection = WalletConnection(global_variables.wallet_file,
-                                                                  global_variables.wallet_password)
+            global_variables.wallet_connection = WalletConnection(wallet_file, wallet_password)
         except ValueError as e:
             print("Failed to connect to walletd: {}".format(e))
             GLib.idle_add(self.update_status, "Failed to connect to walletd")
@@ -54,7 +53,7 @@ class SplashScreen(object):
         # Open the main window using glib
         GLib.idle_add(self.open_main_window)
 
-    def __init__(self):
+    def __init__(self, wallet_file, wallet_password):
         # Initialise the GTK builder and load the glade layout from the file
         self.builder = Gtk.Builder()
         self.builder.add_from_file("SplashScreen.glade")
@@ -84,5 +83,5 @@ class SplashScreen(object):
         self.window.show()
 
         # Start the wallet initialisation on a new thread
-        thread = threading.Thread(target=self.initialise)
+        thread = threading.Thread(target=self.initialise, args=(wallet_file, wallet_password))
         thread.start()

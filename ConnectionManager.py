@@ -42,6 +42,12 @@ class WalletConnection(object):
 
         return walletd_exec
 
+    def check_daemon_running(self):
+        for proc in psutil.process_iter():  # Search the running process list for walletd
+            if proc.name() == "walletd" or proc.name() == "walletd.exe":
+                return True
+        return False
+
     def start_wallet_daemon(self, wallet_file, password):
         """
         Fires off the wallet daemon and releases control once the daemon
@@ -51,6 +57,8 @@ class WalletConnection(object):
         :param password: password for the wallet
         :return: popen instance of the wallet daemon process
         """
+        if self.check_daemon_running():
+            raise ValueError("Daemon is already running.")
         walletd = Popen([self.get_wallet_daemon_path(),
                         '-w', wallet_file, '-p', password, '--local'])
         # Poll the daemon, if poll returns None the daemon is active.
@@ -60,7 +68,6 @@ class WalletConnection(object):
         # the user is still running Turtled and the daemon might die.
         # This is an attempt to wait for that to process.
         # When the main window appears the request status will naturally fail if the daemon is not running.
-        time.sleep(3)
         if not walletd.poll():
             return walletd
         else:
@@ -106,14 +113,11 @@ class RPCConnection(object):
 
         self.id += 1 # Increment the ID by one ready for the next call
 
-        try:
-            # Make the request to the endpoint with specified data
-            response = requests.post(self.url, data=json.dumps(payload), headers=self.headers).json()
+        # Make the request to the endpoint with specified data
+        response = requests.post(self.url, data=json.dumps(payload), headers=self.headers).json()
 
-            # Check if the response returned an error, and extract and wrap it in an exception if it has
-            if 'error' in response:
-                print("Failed to talk to server: %s" % (response,))
-                raise ValueError("Walletd RPC failed with error: {0} {1}".format(response['error']['code'], response['error']['message']))
-            return response
-        except ConnectionError as e:
-            raise ValueError("Failed to connect to wallet daemon!")
+        # Check if the response returned an error, and extract and wrap it in an exception if it has
+        if 'error' in response:
+            print("Failed to talk to server: %s" % (response,))
+            raise ValueError("Walletd RPC failed with error: {0} {1}".format(response['error']['code'], response['error']['message']))
+        return response

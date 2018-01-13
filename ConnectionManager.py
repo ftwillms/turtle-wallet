@@ -90,8 +90,10 @@ class WalletConnection(object):
         if not os.path.isfile(wallet_file):
             raise ValueError("Cannot find wallet file at: {}".format(wallet_file))
         self.walletd = self.start_wallet_daemon(wallet_file, password)
-        port = os.getenv('DAEMON_PORT', 8070)  # If a user is running their own daemon, they can configure the port
-        self.rpc_connection = RPCConnection("http://127.0.0.1:{}/json_rpc".format(port))
+        # If a user is running their own daemon, they can configure the host/port
+        host = os.getenv('DAEMON_HOST', "http://127.0.0.1")
+        port = os.getenv('DAEMON_PORT', 8070)
+        self.rpc_connection = RPCConnection("{}:{}/json_rpc".format(host, port))
 
 
 class RPCConnection(object):

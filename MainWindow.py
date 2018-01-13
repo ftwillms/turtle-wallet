@@ -11,6 +11,7 @@ import threading
 import time
 from gi.repository import Gtk, Gdk, GLib
 import tzlocal
+from requests import ConnectionError
 from __init__ import __version__
 import global_variables
 
@@ -56,29 +57,35 @@ class MainWindow(object):
             GLib.idle_add(self.refresh_values) # Refresh the values, calling the method via GLib
             time.sleep(5) # Wait 5 seconds before doing it again
 
+    def set_error_status(self):
+        self.builder.get_object("MainStatusLabel").set_label("Cannot communicate to wallet daemon! Is it running?")
+
     def refresh_values(self):
         """
         This method refreshes all the values in the UI to represent the current
         state of the wallet.
         """
+        try:
+            # Request the balance from the wallet
+            balances = global_variables.wallet_connection.request("getBalance")
+            # Update the balance amounts, formatted as comma seperated with 2 decimal points
+            self.builder.get_object("AvailableBalanceAmountLabel").set_label("{:,.2f}".format(balances['availableBalance']/100.))
+            self.builder.get_object("LockedBalanceAmountLabel").set_label("{:,.2f}".format(balances['lockedAmount']/100.))
 
-        # Request the balance from the wallet
-        balances = global_variables.wallet_connection.request("getBalance")
-        # Update the balance amounts, formatted as comma seperated with 2 decimal points
-        self.builder.get_object("AvailableBalanceAmountLabel").set_label("{:,.2f}".format(balances['availableBalance']/100.))
-        self.builder.get_object("LockedBalanceAmountLabel").set_label("{:,.2f}".format(balances['lockedAmount']/100.))
+            # Request the addresses from the wallet (looks like you can have multiple?)
+            addresses = global_variables.wallet_connection.request("getAddresses")['addresses']
+            # Load the first address in for now - TODO: Check if multiple addresses need accounting for
+            self.builder.get_object("AddressTextBox").set_text(addresses[0])
 
-        # Request the addresses from the wallet (looks like you can have multiple?)
-        addresses = global_variables.wallet_connection.request("getAddresses")['addresses']
-        # Load the first address in for now - TODO: Check if multiple addresses need accounting for
-        self.builder.get_object("AddressTextBox").set_text(addresses[0])
+            # Request the current status from the wallet
+            status = global_variables.wallet_connection.request("getStatus")
 
-        # Request the current status from the wallet
-        status = global_variables.wallet_connection.request("getStatus")
-
-        # Request all transactions related to our addresses from the wallet
-        # This returns a list of blocks with only our transactions populated in them
-        blocks = global_variables.wallet_connection.request("getTransactions", params={"blockCount" : status['blockCount'], "firstBlockIndex" : 1, "addresses": addresses})['items']
+            # Request all transactions related to our addresses from the wallet
+            # This returns a list of blocks with only our transactions populated in them
+            blocks = global_variables.wallet_connection.request("getTransactions", params={"blockCount" : status['blockCount'], "firstBlockIndex" : 1, "addresses": addresses})['items']
+        except ConnectionError as e:
+            self.set_error_status()
+            return
 
         # Clear the transaction list store ready to (re)populate
         self.transactions_list_store.clear()

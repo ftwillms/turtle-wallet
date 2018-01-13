@@ -57,8 +57,8 @@ class SplashScreen(object):
                     time.sleep(1)
                     block_count = resp['blockCount']
                     known_block_count = resp['knownBlockCount']
-                    GLib.idle_add(self.update_status, "Syncing... [{} / {}]".format(known_block_count, block_count))
-                    if block_count <= known_block_count:
+                    GLib.idle_add(self.update_status, "Syncing... [{} / {}]".format(block_count, known_block_count))
+                    if block_count >= known_block_count:
                         GLib.idle_add(self.update_status, "Wallet is synced, opening...")
                         break
                 except ConnectionError as e:

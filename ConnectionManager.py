@@ -45,8 +45,8 @@ class WalletConnection(object):
     def check_daemon_running(self):
         for proc in psutil.process_iter():  # Search the running process list for walletd
             if proc.name() == "walletd" or proc.name() == "walletd.exe":
-                return True
-        return False
+                return proc
+        return None
 
     def start_wallet_daemon(self, wallet_file, password):
         """
@@ -57,8 +57,10 @@ class WalletConnection(object):
         :param password: password for the wallet
         :return: popen instance of the wallet daemon process
         """
-        if self.check_daemon_running():
-            raise ValueError("Daemon is already running.")
+        existing_daemon = self.check_daemon_running()
+        if existing_daemon:
+            print("Daemon is already running: pid {}".format(existing_daemon.pid))
+            return
         walletd = Popen([self.get_wallet_daemon_path(),
                         '-w', wallet_file, '-p', password, '--local'])
         # Poll the daemon, if poll returns None the daemon is active.
@@ -88,7 +90,8 @@ class WalletConnection(object):
         if not os.path.isfile(wallet_file):
             raise ValueError("Cannot find wallet file at: {}".format(wallet_file))
         self.walletd = self.start_wallet_daemon(wallet_file, password)
-        self.rpc_connection = RPCConnection("http://127.0.0.1:8070/json_rpc")
+        port = os.getenv('DAEMON_PORT', 8070)  # If a user is running their own daemon, they can configure the port
+        self.rpc_connection = RPCConnection("http://127.0.0.1:{}/json_rpc".format(port))
 
 
 class RPCConnection(object):

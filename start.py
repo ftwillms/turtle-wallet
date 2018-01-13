@@ -16,8 +16,9 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-w', '--wallet', help='Wallet file location', required=True)
-parser.add_argument('-p', '--password', help='Wallet password', required=True)
+parser.add_argument('wallet', help='Wallet file location')
+parser.add_argument('password', help='Wallet password')
+
 args = parser.parse_args()
 
 signal.signal(signal.SIGINT, signal.SIG_DFL) # Required to handle interrupts closing the program

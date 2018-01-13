@@ -12,6 +12,7 @@ from gi.repository import Gtk, GLib
 from __init__ import __version__
 from ConnectionManager import WalletConnection
 import global_variables
+from global_variables import resource_path
 from requests import ConnectionError
 from MainWindow import MainWindow
 
@@ -79,7 +80,7 @@ class SplashScreen(object):
     def __init__(self, wallet_file, wallet_password):
         # Initialise the GTK builder and load the glade layout from the file
         self.builder = Gtk.Builder()
-        self.builder.add_from_file("SplashScreen.glade")
+        self.builder.add_from_file(resource_path("SplashScreen.glade"))
 
         # Get the version label on the splash screen
         self.version_label = self.builder.get_object("TurtleWalletVersionLabel")

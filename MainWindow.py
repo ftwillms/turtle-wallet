@@ -14,6 +14,7 @@ import tzlocal
 from requests import ConnectionError
 from __init__ import __version__
 import global_variables
+from global_variables import resource_path
 
 
 class MainWindow(object):
@@ -192,7 +193,7 @@ class MainWindow(object):
     def __init__(self):
         # Initialise the GTK builder and load the glade layout from the file
         self.builder = Gtk.Builder()
-        self.builder.add_from_file("MainWindow.glade")
+        self.builder.add_from_file(resource_path("MainWindow.glade"))
 
         # Get the transaction treeview's backing list store
         self.transactions_list_store = self.builder.get_object("HomeTransactionsListStore")

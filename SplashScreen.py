@@ -41,6 +41,7 @@ class SplashScreen(object):
 
         # There will be an exception if there is a failure to connect at any point
         # TODO: Handle exceptions gracefully
+
         time.sleep(1)
         GLib.idle_add(self.update_status, "Connecting to walletd")
         # Initialise the wallet connection
@@ -76,7 +77,47 @@ class SplashScreen(object):
         # Open the main window using glib
         GLib.idle_add(self.open_main_window)
 
-    def __init__(self, wallet_file, wallet_password):
+    def prompt_wallet_dialog(self):
+        dialog = Gtk.FileChooserDialog("Please select your wallet", self.window,
+                                       Gtk.FileChooserAction.OPEN,
+                                       (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                        Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+        dialog.run()
+        filename = dialog.get_filename()
+        dialog.destroy()
+        return filename
+
+    def prompt_wallet_password(self):
+        # Returns user input as a string or None
+        # If user does not input text it returns None, NOT AN EMPTY STRING.
+        dialog = Gtk.MessageDialog(self.window,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                   Gtk.MessageType.QUESTION,
+                                   Gtk.ButtonsType.OK_CANCEL,
+                                   "Please enter the wallet password:")
+
+        dialog.set_title("Wallet Password")
+
+        dialog_box = dialog.get_content_area()
+        userEntry = Gtk.Entry()
+        userEntry.set_visibility(False)
+        userEntry.set_invisible_char("*")
+        userEntry.set_size_request(250, 0)
+        userEntry.connect("activate", lambda w: dialog.response(Gtk.ResponseType.OK))
+        dialog_box.pack_end(userEntry, False, False, 0)
+
+        dialog.show_all()
+        response = dialog.run()
+        text = userEntry.get_text()
+        dialog.destroy()
+        if (response == Gtk.ResponseType.OK) and (text != ''):
+            return text
+        else:
+            return None
+
+    def __init__(self):
+
+
         # Initialise the GTK builder and load the glade layout from the file
         self.builder = Gtk.Builder()
         self.builder.add_from_file("SplashScreen.glade")
@@ -102,9 +143,18 @@ class SplashScreen(object):
         # Set the window title to reflect the current version
         self.window.set_title("TurtleWallet v{0}".format(__version__))
 
-        # Show the window
-        self.window.show()
+        # TODO: Option to create or open a wallet
+        wallet_file = self.prompt_wallet_dialog()
+        if wallet_file:
+            wallet_password = self.prompt_wallet_password()
+            if wallet_password:
+                # Show the window
+                self.window.show()
 
-        # Start the wallet initialisation on a new thread
-        thread = threading.Thread(target=self.initialise, args=(wallet_file, wallet_password))
-        thread.start()
+                # Start the wallet initialisation on a new thread
+                thread = threading.Thread(target=self.initialise, args=(wallet_file, wallet_password))
+                thread.start()
+            else:
+                Gtk.main_quit()
+        else:
+            Gtk.main_quit()

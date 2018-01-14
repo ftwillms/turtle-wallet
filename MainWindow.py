@@ -124,7 +124,11 @@ class MainWindow(object):
                         address
                     ])
         # Update the status label in the bottom right with block height, peer count, and last refresh time
-        self.builder.get_object("MainStatusLabel").set_label("Current block height: {0} | Peer count {1} | Last Updated {2}".format(status['blockCount'], status['peerCount'], datetime.now(tzlocal.get_localzone()).strftime("%H:%M:%S")))
+        block_height_string = "<b>Current block height</b> {}".format(status['blockCount'])
+        if (status['blockCount'] < (status['knownBlockCount'])):
+            block_height_string = "<b>Synchronizing with network...</b> [{} / {}]".format(status['blockCount'], status['knownBlockCount'])
+        status_label = "{0} | <b>Peer count</b> {1} | <b>Last Updated</b> {2}".format(block_height_string, status['peerCount'], datetime.now(tzlocal.get_localzone()).strftime("%H:%M:%S"))
+        self.builder.get_object("MainStatusLabel").set_markup(status_label)
 
     def __init__(self):
         # Initialise the GTK builder and load the glade layout from the file

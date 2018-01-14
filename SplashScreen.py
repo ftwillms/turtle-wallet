@@ -16,7 +16,7 @@ from requests import ConnectionError
 from MainWindow import MainWindow
 
 # Maximum attempts to talk to the wallet daemon before giving up
-MAX_FAIL_COUNT = 10
+MAX_FAIL_COUNT = 15
 
 class SplashScreen(object):
     """

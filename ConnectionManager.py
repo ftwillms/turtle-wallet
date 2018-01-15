@@ -44,7 +44,13 @@ class WalletConnection(object):
     def check_daemon_running(self):
         for proc in psutil.process_iter():  # Search the running process list for walletd
             if proc.name() == "walletd" or proc.name() == "walletd.exe":
-                return proc
+                try:
+                    if proc.status() == psutil.STATUS_ZOMBIE:
+                        return None
+                    else:
+                        return proc
+                except psutil.NoSuchProcess as e:
+                    return None
         return None
 
     def start_wallet_daemon(self, wallet_file, password):

@@ -80,7 +80,7 @@ class WalletConnection(object):
         Using Popen.wait() this will hold until the daemon is successfully terminated.
         :return:
         """
-        if self.walletd:
+        if self.walletd and self.check_daemon_running():
             r = self.request("save")
             self.walletd.terminate()
             self.walletd.wait()

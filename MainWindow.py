@@ -43,6 +43,56 @@ class MainWindow(object):
         # Hide the dialog upon it's closure
         about_dialog.hide()
 
+    def on_ResetMenuItem_activate(self, object, data=None):
+        """
+        Attempts to call the reset action on the wallet API.
+        On success, shows success message to user.
+        On error, shows error message to user.
+        :param object: unused
+        :param data: unused
+        :return:
+        """
+        r = global_variables.wallet_connection.request("reset")
+        if not r:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
+                                       Gtk.ButtonsType.OK, "Wallet Reset")
+            dialog.format_secondary_text(
+                "Wallet has been reset successfully.")
+            dialog.run()
+            dialog.destroy()
+        else:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
+                                       Gtk.ButtonsType.CANCEL, "Error resetting")
+            dialog.format_secondary_text(
+                "The wallet failed to reset!")
+            dialog.run()
+            dialog.destroy()
+
+    def on_SaveMenuItem_activate(self, object, data=None):
+        """
+        Attempts to call the save action on the wallet API.
+        On success, shows success mesage to user.
+        On error, shows error message to user.
+        :param object: unused
+        :param data: unused
+        :return:
+        """
+        r = global_variables.wallet_connection.request("save")
+        if not r:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
+                                       Gtk.ButtonsType.OK, "Wallet Saved")
+            dialog.format_secondary_text(
+                "Wallet has been saved successfully.")
+            dialog.run()
+            dialog.destroy()
+        else:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
+                                       Gtk.ButtonsType.CANCEL, "Error saving")
+            dialog.format_secondary_text(
+                "The wallet failed to save!")
+            dialog.run()
+            dialog.destroy()
+
     def update_loop(self):
         """
         This method loops infinitely and refreshes the UI every 5 seconds.

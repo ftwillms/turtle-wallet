@@ -12,17 +12,13 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from SplashScreen import SplashScreen
 
-import argparse
-import os
-
-parser = argparse.ArgumentParser()
-parser.add_argument('-w', '--wallet', help='Wallet file location', required=True)
-parser.add_argument('-p', '--password', help='Wallet password', required=True)
-args = parser.parse_args()
 
 signal.signal(signal.SIGINT, signal.SIG_DFL) # Required to handle interrupts closing the program
-splash_screen = SplashScreen(args.wallet, args.password) # Create a new instance of the splash screen
-Gtk.main() # Start the main GTK loop
+splash_screen = SplashScreen() # Create a new instance of the splash screen
+
+# Make sure the splash screen wasn't cancelled by the user
+if not splash_screen.startup_cancelled:
+    Gtk.main() # Start the main GTK loop
 
 if global_variables.wallet_connection:
     global_variables.wallet_connection.stop_wallet_daemon()

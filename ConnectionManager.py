@@ -8,7 +8,6 @@ connections, currently just to Walletd.
 import json
 import psutil
 import requests
-from requests import ConnectionError
 
 import time
 import os

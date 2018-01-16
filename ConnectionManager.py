@@ -9,6 +9,12 @@ import json
 import psutil
 import requests
 
+import time
+import os
+import os.path
+from subprocess import Popen
+
+
 class WalletConnection(object):
     """
     This class represents an RPC connection to Walletd
@@ -21,16 +27,79 @@ class WalletConnection(object):
         else:
             raise Exception("No RPC connection has been established!")
 
-    def __init__(self):
-        for proc in psutil.process_iter(): # Search the running process list for walletd
-            if proc.name() == "walletd":
-                # Initialise the RPC connection
-                self.rpc_connection = RPCConnection("http://127.0.0.1:8070/json_rpc")
-                #Test the RPC connection
-                self.rpc_connection.request("getStatus")
-                return
+    def get_wallet_daemon_path(self):
+        """
+        Tries to find where walletd exists. Looks for TURTLE_HOME env and falls
+        back to looking at the current working directory.
+        For Windows (nt), the extension .exe is appended.
+        :return: path to the walletd executable
+        """
+        walletd_filename = "walletd" if os.name != 'nt' else "walletd.exe"
+        walletd_exec = os.path.join(os.getenv('TURTLE_HOME', '.'), walletd_filename)
+        if not os.path.isfile(walletd_exec):
+            raise ValueError("Cannot find wallet at location: {}".format(walletd_exec))
 
-        raise Exception("Walletd not running")
+        return walletd_exec
+
+    def check_daemon_running(self):
+        for proc in psutil.process_iter():  # Search the running process list for walletd
+            if proc.name() == "walletd" or proc.name() == "walletd.exe":
+                try:
+                    if proc.status() == psutil.STATUS_ZOMBIE:
+                        return None
+                    else:
+                        return proc
+                except psutil.NoSuchProcess as e:
+                    return None
+        return None
+
+    def start_wallet_daemon(self, wallet_file, password):
+        """
+        Fires off the wallet daemon and releases control once the daemon
+        has successfully been spun up.
+
+        :param wallet_file: path to the wallet file
+        :param password: password for the wallet
+        :return: popen instance of the wallet daemon process
+        """
+        existing_daemon = self.check_daemon_running()
+        if existing_daemon:
+            print("Daemon is already running: pid {}".format(existing_daemon.pid))
+            return
+        walletd = Popen([self.get_wallet_daemon_path(),
+                        '-w', wallet_file, '-p', password, '--local'])
+        # Poll the daemon, if poll returns None the daemon is active.
+        while walletd.poll():
+            time.sleep(1)
+        # So now that the daemon is active, the password maybe invalid or
+        # the user is still running Turtled and the daemon might die.
+        # This is an attempt to wait for that to process.
+        # When the main window appears the request status will naturally fail if the daemon is not running.
+        if not walletd.poll():
+            return walletd
+        else:
+            raise ValueError("Unable to open wallet daemon.")
+
+    def stop_wallet_daemon(self):
+        """
+        Attempts to terminate (SIGTERM) the wallet daemon.
+        Using Popen.wait() this will hold until the daemon is successfully terminated.
+        :return:
+        """
+        if self.walletd and self.check_daemon_running():
+            r = self.request("save")
+            self.walletd.terminate()
+            self.walletd.wait()
+
+    def __init__(self, wallet_file, password):
+        if not os.path.isfile(wallet_file):
+            raise ValueError("Cannot find wallet file at: {}".format(wallet_file))
+        self.walletd = self.start_wallet_daemon(wallet_file, password)
+        # If a user is running their own daemon, they can configure the host/port
+        host = os.getenv('DAEMON_HOST', "http://127.0.0.1")
+        port = os.getenv('DAEMON_PORT', 8070)
+        self.rpc_connection = RPCConnection("{}:{}/json_rpc".format(host, port))
+
 
 class RPCConnection(object):
     """
@@ -59,6 +128,6 @@ class RPCConnection(object):
 
         # Check if the response returned an error, and extract and wrap it in an exception if it has
         if 'error' in response:
-            raise Exception("Connection to Walletd RPC failed with error: {0} {1}".format(response['error']['code'], response['error']['message']))
-        else:
-            return response
+            print("Failed to talk to server: %s" % (response,))
+            raise ValueError("Walletd RPC failed with error: {0} {1}".format(response['error']['code'], response['error']['message']))
+        return response

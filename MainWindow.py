@@ -11,6 +11,7 @@ import threading
 import time
 from gi.repository import Gtk, Gdk, GLib
 import tzlocal
+from requests import ConnectionError
 from __init__ import __version__
 import global_variables
 
@@ -42,6 +43,56 @@ class MainWindow(object):
         # Hide the dialog upon it's closure
         about_dialog.hide()
 
+    def on_ResetMenuItem_activate(self, object, data=None):
+        """
+        Attempts to call the reset action on the wallet API.
+        On success, shows success message to user.
+        On error, shows error message to user.
+        :param object: unused
+        :param data: unused
+        :return:
+        """
+        r = global_variables.wallet_connection.request("reset")
+        if not r:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
+                                       Gtk.ButtonsType.OK, "Wallet Reset")
+            dialog.format_secondary_text(
+                "Wallet has been reset successfully.")
+            dialog.run()
+            dialog.destroy()
+        else:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
+                                       Gtk.ButtonsType.CANCEL, "Error resetting")
+            dialog.format_secondary_text(
+                "The wallet failed to reset!")
+            dialog.run()
+            dialog.destroy()
+
+    def on_SaveMenuItem_activate(self, object, data=None):
+        """
+        Attempts to call the save action on the wallet API.
+        On success, shows success mesage to user.
+        On error, shows error message to user.
+        :param object: unused
+        :param data: unused
+        :return:
+        """
+        r = global_variables.wallet_connection.request("save")
+        if not r:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
+                                       Gtk.ButtonsType.OK, "Wallet Saved")
+            dialog.format_secondary_text(
+                "Wallet has been saved successfully.")
+            dialog.run()
+            dialog.destroy()
+        else:
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
+                                       Gtk.ButtonsType.CANCEL, "Error saving")
+            dialog.format_secondary_text(
+                "The wallet failed to save!")
+            dialog.run()
+            dialog.destroy()
+
     def update_loop(self):
         """
         This method loops infinitely and refreshes the UI every 5 seconds.
@@ -56,29 +107,35 @@ class MainWindow(object):
             GLib.idle_add(self.refresh_values) # Refresh the values, calling the method via GLib
             time.sleep(5) # Wait 5 seconds before doing it again
 
+    def set_error_status(self):
+        self.builder.get_object("MainStatusLabel").set_label("Cannot communicate to wallet daemon! Is it running?")
+
     def refresh_values(self):
         """
         This method refreshes all the values in the UI to represent the current
         state of the wallet.
         """
+        try:
+            # Request the balance from the wallet
+            balances = global_variables.wallet_connection.request("getBalance")
+            # Update the balance amounts, formatted as comma seperated with 2 decimal points
+            self.builder.get_object("AvailableBalanceAmountLabel").set_label("{:,.2f}".format(balances['availableBalance']/100.))
+            self.builder.get_object("LockedBalanceAmountLabel").set_label("{:,.2f}".format(balances['lockedAmount']/100.))
 
-        # Request the balance from the wallet
-        balances = global_variables.wallet_connection.request("getBalance")
-        # Update the balance amounts, formatted as comma seperated with 2 decimal points
-        self.builder.get_object("AvailableBalanceAmountLabel").set_label("{:,.2f}".format(balances['availableBalance']/100.))
-        self.builder.get_object("LockedBalanceAmountLabel").set_label("{:,.2f}".format(balances['lockedAmount']/100.))
+            # Request the addresses from the wallet (looks like you can have multiple?)
+            addresses = global_variables.wallet_connection.request("getAddresses")['addresses']
+            # Load the first address in for now - TODO: Check if multiple addresses need accounting for
+            self.builder.get_object("AddressTextBox").set_text(addresses[0])
 
-        # Request the addresses from the wallet (looks like you can have multiple?)
-        addresses = global_variables.wallet_connection.request("getAddresses")['addresses']
-        # Load the first address in for now - TODO: Check if multiple addresses need accounting for
-        self.builder.get_object("AddressTextBox").set_text(addresses[0])
+            # Request the current status from the wallet
+            status = global_variables.wallet_connection.request("getStatus")
 
-        # Request the current status from the wallet
-        status = global_variables.wallet_connection.request("getStatus")
-
-        # Request all transactions related to our addresses from the wallet
-        # This returns a list of blocks with only our transactions populated in them
-        blocks = global_variables.wallet_connection.request("getTransactions", params={"blockCount" : status['blockCount'], "firstBlockIndex" : 1, "addresses": addresses})['items']
+            # Request all transactions related to our addresses from the wallet
+            # This returns a list of blocks with only our transactions populated in them
+            blocks = global_variables.wallet_connection.request("getTransactions", params={"blockCount" : status['blockCount'], "firstBlockIndex" : 1, "addresses": addresses})['items']
+        except ConnectionError as e:
+            self.set_error_status()
+            return
 
         # Clear the transaction list store ready to (re)populate
         self.transactions_list_store.clear()
@@ -117,7 +174,11 @@ class MainWindow(object):
                         address
                     ])
         # Update the status label in the bottom right with block height, peer count, and last refresh time
-        self.builder.get_object("MainStatusLabel").set_label("Current block height: {0} | Peer count {1} | Last Updated {2}".format(status['blockCount'], status['peerCount'], datetime.now(tzlocal.get_localzone()).strftime("%H:%M:%S")))
+        block_height_string = "<b>Current block height</b> {}".format(status['blockCount'])
+        if (status['blockCount'] < (status['knownBlockCount'])):
+            block_height_string = "<b>Synchronizing with network...</b> [{} / {}]".format(status['blockCount'], status['knownBlockCount'])
+        status_label = "{0} | <b>Peer count</b> {1} | <b>Last Updated</b> {2}".format(block_height_string, status['peerCount'], datetime.now(tzlocal.get_localzone()).strftime("%H:%M:%S"))
+        self.builder.get_object("MainStatusLabel").set_markup(status_label)
 
     def __init__(self):
         # Initialise the GTK builder and load the glade layout from the file

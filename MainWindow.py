@@ -135,7 +135,8 @@ class MainWindow(object):
         }
         try:
             resp = global_variables.wallet_connection.request("sendTransaction", params=body)
-            self.builder.get_object("TransactionStatusLabel").set_label(resp['transactionHash'])
+            txHash = resp['transactionHash']
+            self.builder.get_object("TransactionStatusLabel").set_markup("<b>TxID</b>: {}".format(txHash))
             self.clear_send_ui()
         except ConnectionError as e:
             print("Failed to connect to daemon: {}".format(e))

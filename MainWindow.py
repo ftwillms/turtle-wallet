@@ -43,7 +43,7 @@ class MainWindow(object):
         Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(self.builder.get_object("AddressTextBox").get_text(), -1)
         
     def on_FeeSuggestionCheck_clicked(self, object, data=None):
-	    """Called by GTK when the FeeSuggestionCheck Checkbox is Toggled"""
+        """Called by GTK when the FeeSuggestionCheck Checkbox is Toggled"""
         fee_entry = self.builder.get_object("FeeEntry")
         if object.get_active():
             fee_entry.set_sensitive(False)
@@ -223,6 +223,13 @@ class MainWindow(object):
     def set_error_status(self):
         main_logger.error("Cannot communicate to wallet daemon!")
         self.builder.get_object("MainStatusLabel").set_label("Cannot communicate to wallet daemon! Is it running?")
+        
+    def walletd_Watchdog(self):
+        """ If we have gotten to this function, this means walletd has either exited or is not functioning properly.
+            This function will attempt to recover the lost service."""
+        #ConnectionManager does everything for us after we know the daemon is bad. It checks the daemon file location, checks running process, and reboots it.
+        global_variables.wallet_connection.start_wallet_daemon(global_variables.wallet_connection.wallet_file,global_variables.wallet_connection.password)
+            
 
     def refresh_values(self):
         """
@@ -248,9 +255,24 @@ class MainWindow(object):
             # Request all transactions related to our addresses from the wallet
             # This returns a list of blocks with only our transactions populated in them
             blocks = global_variables.wallet_connection.request("getTransactions", params={"blockCount" : status['blockCount'], "firstBlockIndex" : 1, "addresses": addresses})['items']
+            self.currentTimeout = 0
+            self.currentTry = 0
             
         except ConnectionError as e:
             main_logger.error(str(e))
+            
+            if self.currentTimeout >= self.watchdogTimeout:
+                if self.currentTry <= self.watchdogMaxTry:
+                    self.walletd_Watchdog()
+                else:
+                    dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, "Walletd daemon could not be recovered!")
+                    dialog.format_secondary_text("Turtle Wallet has tried numerous times to relaunch the needed daemon and has failed. Please relaunch the wallet!")
+                    dialog.run()
+                    dialog.destroy()
+                    Gtk.main_quit()
+            else:
+                self.currentTimeout += 1
+                
             self.set_error_status()
             return
 
@@ -305,6 +327,12 @@ class MainWindow(object):
         # Initialise the GTK builder and load the glade layout from the file
         self.builder = Gtk.Builder()
         self.builder.add_from_file("MainWindow.glade")
+        
+        # Init. counters needed for watchdog function
+        self.watchdogTimeout = 3
+        self.watchdogMaxTry = 3
+        self.currentTimeout = 0
+        self.currentTry = 0
 
         # Get the transaction treeview's backing list store
         self.transactions_list_store = self.builder.get_object("HomeTransactionsListStore")

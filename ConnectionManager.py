@@ -73,7 +73,11 @@ class WalletConnection(object):
         if existing_daemon:
             print("Daemon is already running: pid {}".format(existing_daemon.pid))
             WC_logger.info("Daemon is already running: pid {}".format(existing_daemon.pid))
-            return
+            print("Terminating existing daemon incase it was ran with incorrect, or irrelevant data")
+            WC_logger.info("Terminating existing daemon incase it was ran with incorrect, or irrelevant data")
+            existing_daemon.terminate()
+            existing_daemon.wait()
+            
         walletd = Popen([self.get_wallet_daemon_path(),
                         '-w', wallet_file, '-p', password, '--local'])
         # Poll the daemon, if poll returns None the daemon is active.
@@ -101,6 +105,8 @@ class WalletConnection(object):
             self.walletd.wait()
 
     def __init__(self, wallet_file, password):
+        self.wallet_file = wallet_file
+        self.password = password
         if not os.path.isfile(wallet_file):
             WC_logger.error("Cannot find wallet file at: {}".format(wallet_file))
             raise ValueError("Cannot find wallet file at: {}".format(wallet_file))

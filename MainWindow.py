@@ -14,7 +14,10 @@ import tzlocal
 from requests import ConnectionError
 from __init__ import __version__
 import global_variables
+import logging
 
+# Get Logger made in start.py
+main_logger = logging.getLogger('trtl_log.main')
 
 class MainWindow(object):
     """
@@ -58,6 +61,7 @@ class MainWindow(object):
                                        Gtk.ButtonsType.OK, "Wallet Reset")
             dialog.format_secondary_text(
                 "Wallet has been reset successfully.")
+            main_logger.info("Wallet has been reset successfully.")
             dialog.run()
             dialog.destroy()
         else:
@@ -65,6 +69,7 @@ class MainWindow(object):
                                        Gtk.ButtonsType.CANCEL, "Error resetting")
             dialog.format_secondary_text(
                 "The wallet failed to reset!")
+            main_logger.error("The wallet failed to reset!")
             dialog.run()
             dialog.destroy()
 
@@ -83,6 +88,7 @@ class MainWindow(object):
                                        Gtk.ButtonsType.OK, "Wallet Saved")
             dialog.format_secondary_text(
                 "Wallet has been saved successfully.")
+            main_logger.info("Wallet has been saved successfully.")
             dialog.run()
             dialog.destroy()
         else:
@@ -90,6 +96,7 @@ class MainWindow(object):
                                        Gtk.ButtonsType.CANCEL, "Error saving")
             dialog.format_secondary_text(
                 "The wallet failed to save!")
+            main_logger.error("The wallet failed to save!")
             dialog.run()
             dialog.destroy()
 
@@ -107,6 +114,7 @@ class MainWindow(object):
         if not target_address.startswith('TRTL') or len(target_address) <= 50:
             self.builder.get_object("TransactionStatusLabel")\
                 .set_label("The address doesn't look right, are you sure it's a TRTL address?")
+            main_logger.warn("Incorrect TRTL address set on send")
             return
         source_address = self.builder.get_object("AddressTextBox").get_text()
 
@@ -114,15 +122,18 @@ class MainWindow(object):
         if target_address == source_address:
             self.builder.get_object("TransactionStatusLabel") \
                 .set_label("Are you trying to send yourself TRTL? Is that even possible?")
+            main_logger.warn("Invalid TRTL address set on send")
             return
 
         # Capturing amount value and validating
         try:
             amount = int(float(self.builder.get_object("AmountEntry").get_text())*100)
             if amount <= 0:
+                main_logger.warn("TRTL amount is invalid on send")
                 raise ValueError("Amount is an invalid number")
         except ValueError as e:
             print("Invalid amount: %s" % e)
+            main_logger.warn("Invalid TRTL amount: %s" % e)
             self.builder.get_object("TransactionStatusLabel")\
                 .set_label("Slow down TRTL bro! The amount needs to be a number greater than 0.")
             return
@@ -138,14 +149,17 @@ class MainWindow(object):
             txHash = resp['transactionHash']
             self.builder.get_object("TransactionStatusLabel").set_markup("<b>TxID</b>: {}".format(txHash))
             self.clear_send_ui()
+            main_logger.info("New Send Transaction - Amount: " + str(amount) + ", Mix: " + str(mixin) + ", To_Address: " + str(target_address))
         except ConnectionError as e:
             print("Failed to connect to daemon: {}".format(e))
             self.builder.get_object("TransactionStatusLabel") \
                 .set_label("Failed to send: cannot connect to server.")
+            main_logger.error("Failed to send: cannot connect to server")
         except ValueError as e:
             print("Server request error: {}".format(e))
             self.builder.get_object("TransactionStatusLabel") \
                 .set_label("Failed: {}".format(e))
+            main_logger.error("Server request error: {}".format(e))
 
 
     def clear_send_ui(self):
@@ -172,6 +186,7 @@ class MainWindow(object):
             time.sleep(5) # Wait 5 seconds before doing it again
 
     def set_error_status(self):
+        main_logger.error("Cannot communicate to wallet daemon!")
         self.builder.get_object("MainStatusLabel").set_label("Cannot communicate to wallet daemon! Is it running?")
 
     def refresh_values(self):
@@ -185,6 +200,7 @@ class MainWindow(object):
             # Update the balance amounts, formatted as comma seperated with 2 decimal points
             self.builder.get_object("AvailableBalanceAmountLabel").set_label("{:,.2f}".format(balances['availableBalance']/100.))
             self.builder.get_object("LockedBalanceAmountLabel").set_label("{:,.2f}".format(balances['lockedAmount']/100.))
+            
 
             # Request the addresses from the wallet (looks like you can have multiple?)
             addresses = global_variables.wallet_connection.request("getAddresses")['addresses']
@@ -197,7 +213,9 @@ class MainWindow(object):
             # Request all transactions related to our addresses from the wallet
             # This returns a list of blocks with only our transactions populated in them
             blocks = global_variables.wallet_connection.request("getTransactions", params={"blockCount" : status['blockCount'], "firstBlockIndex" : 1, "addresses": addresses})['items']
+            
         except ConnectionError as e:
+            main_logger.error(str(e))
             self.set_error_status()
             return
 
@@ -244,6 +262,9 @@ class MainWindow(object):
             block_height_string = "<b>Synchronizing with network...</b> [{} / {}]".format(status['blockCount'], status['knownBlockCount'])
         status_label = "{0} | <b>Peer count</b> {1} | <b>Last Updated</b> {2}".format(block_height_string, status['peerCount'], datetime.now(tzlocal.get_localzone()).strftime("%H:%M:%S"))
         self.builder.get_object("MainStatusLabel").set_markup(status_label)
+        
+        #Logging here for debug purposes. Sloppy Joe..
+        main_logger.debug("REFRESH STATS:" + "\r\n" + "AvailableBalanceAmountLabel: {:,.2f}".format(balances['availableBalance']/100.) + "\r\n" + "LockedBalanceAmountLabel: {:,.2f}".format(balances['lockedAmount']/100.) + "\r\n" + "Address: " + str(addresses[0])  + "\r\n" +  "Status: " + "{0} | Peer count {1} | Last Updated {2}".format(block_height_string, status['peerCount'], datetime.now(tzlocal.get_localzone()).strftime("%H:%M:%S")))
 
     def __init__(self):
         # Initialise the GTK builder and load the glade layout from the file

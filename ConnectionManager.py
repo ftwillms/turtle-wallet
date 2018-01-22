@@ -13,7 +13,10 @@ import time
 import os
 import os.path
 from subprocess import Popen
+import logging
 
+# Get Logger made in start.py
+WC_logger = logging.getLogger('trtl_log.walletConnection')
 
 class WalletConnection(object):
     """
@@ -23,8 +26,10 @@ class WalletConnection(object):
         """Makes an RPC request to Walletd"""
         if self.rpc_connection is not None: # Check to make sure that an RPC connection has been established
             response = self.rpc_connection.request(method, params) # Make the request
+            WC_logger.debug("Request Response: \r\n" + str(response['result']) )
             return response['result'] # Return the response from the request
         else:
+            WC_logger.error("No RPC connection has been established!")
             raise Exception("No RPC connection has been established!")
 
     def get_wallet_daemon_path(self):
@@ -37,6 +42,7 @@ class WalletConnection(object):
         walletd_filename = "walletd" if os.name != 'nt' else "walletd.exe"
         walletd_exec = os.path.join(os.getenv('TURTLE_HOME', '.'), walletd_filename)
         if not os.path.isfile(walletd_exec):
+            WC_logger.error("Cannot find wallet at location: {}".format(walletd_exec))
             raise ValueError("Cannot find wallet at location: {}".format(walletd_exec))
 
         return walletd_exec
@@ -50,6 +56,7 @@ class WalletConnection(object):
                     else:
                         return proc
                 except psutil.NoSuchProcess as e:
+                    WC_logger.info("walletd process not found")
                     return None
         return None
 
@@ -65,6 +72,7 @@ class WalletConnection(object):
         existing_daemon = self.check_daemon_running()
         if existing_daemon:
             print("Daemon is already running: pid {}".format(existing_daemon.pid))
+            WC_logger.info("Daemon is already running: pid {}".format(existing_daemon.pid))
             return
         walletd = Popen([self.get_wallet_daemon_path(),
                         '-w', wallet_file, '-p', password, '--local'])
@@ -78,6 +86,7 @@ class WalletConnection(object):
         if not walletd.poll():
             return walletd
         else:
+            WC_logger.error("Unable to open wallet daemon.")
             raise ValueError("Unable to open wallet daemon.")
 
     def stop_wallet_daemon(self):
@@ -93,6 +102,7 @@ class WalletConnection(object):
 
     def __init__(self, wallet_file, password):
         if not os.path.isfile(wallet_file):
+            WC_logger.error("Cannot find wallet file at: {}".format(wallet_file))
             raise ValueError("Cannot find wallet file at: {}".format(wallet_file))
         self.walletd = self.start_wallet_daemon(wallet_file, password)
         # If a user is running their own daemon, they can configure the host/port
@@ -128,6 +138,7 @@ class RPCConnection(object):
 
         # Check if the response returned an error, and extract and wrap it in an exception if it has
         if 'error' in response:
+            WC_logger.error("Failed to talk to server: %s" % (response,))
             print("Failed to talk to server: %s" % (response,))
             raise ValueError("Walletd RPC failed with error: {0} {1}".format(response['error']['code'], response['error']['message']))
         return response

@@ -14,11 +14,14 @@ from ConnectionManager import WalletConnection
 import global_variables
 from requests import ConnectionError
 from MainWindow import MainWindow
+import logging
 
 
 # Maximum attempts to talk to the wallet daemon before giving up
 MAX_FAIL_COUNT = 15
 
+# Get Logger made in start.py
+splash_logger = logging.getLogger('trtl_log.splash')
 
 class SplashScreen(object):
     """
@@ -46,6 +49,7 @@ class SplashScreen(object):
 
         time.sleep(1)
         GLib.idle_add(self.update_status, "Connecting to walletd")
+        splash_logger.info("Connecting to walletd, entering wait loop")
         # Initialise the wallet connection
         # If we fail to talk to the server so many times, it's hopeless
         fail_count = 0
@@ -60,26 +64,33 @@ class SplashScreen(object):
                     # In the case that the daemon started but stopped, usually do to an
                     # invalid password.
                     if not global_variables.wallet_connection.check_daemon_running():
+                        splash_logger.error("Wallet daemon exited.")
                         raise ValueError("Wallet daemon exited.")
                     resp = global_variables.wallet_connection.request('getStatus')
                     block_count = resp['blockCount']
                     known_block_count = resp['knownBlockCount']
+                    
                     # It's possible the RPC server is running but the daemon hasn't received
                     # the known block count yet. We need to wait on that before comparing block height.
                     if known_block_count == 0:
                         GLib.idle_add(self.update_status, "Waiting on known block count...")
                         continue
                     GLib.idle_add(self.update_status, "Syncing... [{} / {}]".format(block_count, known_block_count))
+                    splash_logger.debug("Syncing... [{} / {}]".format(block_count, known_block_count))
                     # Even though we check known block count, leaving it in there in case of weird edge cases
                     if (known_block_count > 0) and (block_count >= known_block_count):
                         GLib.idle_add(self.update_status, "Wallet is synced, opening...")
+                        splash_logger.info("Wallet successfully synced, opening wallet")
                         break
                 except ConnectionError as e:
                     fail_count += 1
                     print("ConnectionError while waiting for daemon to start: {}".format(e))
+                    splash_logger.warn("ConnectionError while waiting for daemon to start: {}".format(e))
                     if fail_count >= MAX_FAIL_COUNT:
+                        splash_logger.error("Can't communicate to daemon")
                         raise ValueError("Can't communicate to daemon")
         except ValueError as e:
+            splash_logger.error("Failed to connect to walletd: {}".format(e))
             print("Failed to connect to walletd: {}".format(e))
             GLib.idle_add(self.update_status, "Failed: {}".format(e))
             time.sleep(3)
@@ -170,10 +181,12 @@ class SplashScreen(object):
 
         # Set the window title to reflect the current version
         self.window.set_title("TurtleWallet v{0}".format(__version__))
+        splash_logger.info("TurtleWallet v{0}".format(__version__))
 
         # TODO: Option to create or open a wallet
         wallet_file = self.prompt_wallet_dialog()
         if wallet_file:
+            splash_logger.info("Using wallet: " + wallet_file) 
             wallet_password = self.prompt_wallet_password()
             if wallet_password:
                 # Show the window
@@ -183,6 +196,8 @@ class SplashScreen(object):
                 thread = threading.Thread(target=self.initialise, args=(wallet_file, wallet_password))
                 thread.start()
             else:
+                splash_logger.info("Invalid password")
                 self.startup_cancelled = True
         else:
+            splash_logger.warn("No wallet found, given, or created")
             self.startup_cancelled = True

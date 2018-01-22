@@ -41,6 +41,15 @@ class MainWindow(object):
         """Called by GTK when the copy button is clicked"""
         self.builder.get_object("AddressTextBox")
         Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(self.builder.get_object("AddressTextBox").get_text(), -1)
+        
+    def on_FeeSuggestionCheck_clicked(self, object, data=None):
+	    """Called by GTK when the FeeSuggestionCheck Checkbox is Toggled"""
+        fee_entry = self.builder.get_object("FeeEntry")
+        if object.get_active():
+            fee_entry.set_sensitive(False)
+        else:
+            fee_entry.set_sensitive(True)
+        
 
     def on_AboutMenuItem_activate(self, object, data=None):
         """Called by GTK when the 'About' menu item is clicked"""
@@ -147,6 +156,22 @@ class MainWindow(object):
             self.builder.get_object("TransactionStatusLabel")\
                 .set_label("Slow down TRTL bro! The amount needs to be a number greater than 0.")
             return
+            
+        #Determine Fee Settings
+        feeSuggest = self.builder.get_object("FeeSuggestionCheck")
+        if not feeSuggest.get_active():
+            try:
+                amount = int(float(self.builder.get_object("FeeEntry").get_text())*100)
+                if amount <= 0:
+                    main_logger.warn("FEE amount is invalid on send")
+                    raise ValueError("FEE amount is an invalid number")
+            except ValueError as e:
+                print("Invalid FEE amount: %s" % e)
+                main_logger.warn("Invalid FEE amount: %s" % e)
+                self.builder.get_object("TransactionStatusLabel")\
+                    .set_label("Custom FEE amount is checked with a invalid FEE amount")
+                return
+            
         # Mixin
         mixin = int(self.builder.get_object("MixinSpinButton").get_text())
         body = {
@@ -300,6 +325,7 @@ class MainWindow(object):
         uiHandler = UILogHandler(self.builder.get_object("LogBuffer"))
         uiHandler.setLevel(logging.INFO)
         main_logger.addHandler(uiHandler)
+        
 
         # Start the UI update loop in a new thread
         self.update_thread = threading.Thread(target=self.update_loop)

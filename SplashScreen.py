@@ -15,10 +15,14 @@ import global_variables
 from requests import ConnectionError
 from MainWindow import MainWindow
 import logging
+import json
+import os
+from subprocess import Popen
 
 
 # Maximum attempts to talk to the wallet daemon before giving up
 MAX_FAIL_COUNT = 15
+cur_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Get Logger made in start.py
 splash_logger = logging.getLogger('trtl_log.splash')
@@ -98,6 +102,28 @@ class SplashScreen(object):
         time.sleep(1)
         # Open the main window using glib
         GLib.idle_add(self.open_main_window)
+        
+    def get_wallet_daemon_path(self):
+        """
+        Tries to find where walletd exists. Looks for TURTLE_HOME env and falls
+        back to looking at the current working directory.
+        For Windows (nt), the extension .exe is appended.
+        :return: path to the walletd executable
+        
+        Note: We need a duplicate of this function in the splash to find the exe,
+        to create a wallet before connection happens.
+        """
+        walletd_filename = "walletd" if os.name != 'nt' else "walletd.exe"
+        walletd_exec = os.path.join(os.getenv('TURTLE_HOME', '.'), walletd_filename)
+        if not os.path.isfile(walletd_exec):
+            WC_logger.error("Cannot find wallet at location: {}".format(walletd_exec))
+            raise ValueError("Cannot find wallet at location: {}".format(walletd_exec))
+
+        return walletd_exec
+        
+    def create_wallet(self, name, password):
+        walletd = Popen([self.get_wallet_daemon_path(), '-w', os.path.join(cur_dir, name + ".wallet"), '-p', password, '-g'])
+        return walletd.wait()
 
     def prompt_wallet_dialog(self):
         """
@@ -128,6 +154,7 @@ class SplashScreen(object):
                                    "Please enter the wallet password:")
 
         dialog.set_title("Wallet Password")
+        dialog.add_button("Use different wallet", 9)
 
         # Setup UI for entry box in the dialog
         dialog_box = dialog.get_content_area()
@@ -147,9 +174,111 @@ class SplashScreen(object):
         text = userEntry.get_text()
         dialog.destroy()
         if (response == Gtk.ResponseType.OK) and (text != ''):
-            return text
+            return (True,text)
+        elif response == 9:
+            #return False tuple if 'Use Different Wallet' is selected, so we may proceed differently on return
+            return (False,"")
+        else:
+            return (None,"")
+
+    def default_dialog(self, title, message):
+        """
+        Prompt the user for their wallet password
+        :return: Returns the user text or none if they chose to cancel
+        """
+        dialog = Gtk.MessageDialog(self.window,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                   Gtk.MessageType.QUESTION,
+                                   Gtk.ButtonsType.OK_CANCEL,
+                                   title)
+
+        dialog.set_title(message)
+        dialog.show_all()
+        response = dialog.run()
+        if (response == Gtk.ResponseType.OK):
+            dialog.destroy()
+            return True
+        else:
+            dialog.destroy()
+            return False
+        
+            
+    def prompt_wallet_create(self):
+        """
+        Prompt the user for their wallet password
+        :return: Returns the user text or none if they chose to cancel
+        """
+        dialog = Gtk.MessageDialog(self.window,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                   Gtk.MessageType.QUESTION,
+                                   Gtk.ButtonsType.OK_CANCEL,
+                                   "Wallet Name:")
+
+        dialog.set_title("Please create your wallet")
+
+        # Setup UI for entry box in the dialog
+        dialog_box = dialog.get_content_area()
+        
+        #nameLabel = Gtk.Label("Wallet Name:")
+        
+        namelEntry = Gtk.Entry()
+        namelEntry.set_visibility(True)
+        namelEntry.set_size_request(250, 0)
+        
+        passLabel = Gtk.Label("Wallet Password:")
+        
+        passEntry = Gtk.Entry()
+        passEntry.set_visibility(False)
+        passEntry.set_invisible_char("*")
+        passEntry.set_size_request(250, 0)
+        
+        passLabel2 = Gtk.Label("Confirm Password:")
+        
+        passEntry2 = Gtk.Entry()
+        passEntry2.set_visibility(False)
+        passEntry2.set_invisible_char("*")
+        passEntry2.set_size_request(250, 0)
+        # Trigger the dialog's response when a user hits ENTER on the text box.
+        # The lamba here is a wrapper to get around the default arguments
+        passEntry2.connect("activate", lambda w: dialog.response(Gtk.ResponseType.OK))
+        # Pack the back right to left, no expanding, no filling, 0 padding
+        dialog_box.pack_end(passEntry2, False, False, 0)
+        dialog_box.pack_end(passLabel2, False, False, 0)
+        dialog_box.pack_end(passEntry, False, False, 0)
+        dialog_box.pack_end(passLabel, False, False, 0)
+        dialog_box.pack_end(namelEntry, False, False, 0)
+        #dialog_box.pack_end(nameLabel, False, False, 0)
+
+        dialog.show_all()
+        # Runs dialog and waits for the response
+        response = dialog.run()
+        nameText = namelEntry.get_text()
+        passText = passEntry.get_text()
+        pass2Text = passEntry2.get_text()
+        dialog.destroy()
+        if (response == Gtk.ResponseType.OK):
+            if nameText == "":
+                return "Invalid name for wallet"
+            elif passText != pass2Text:
+                return "Given passwords do not match"
+            else:
+                #return Tuple of information
+                return (nameText,passText)
+                
         else:
             return None
+            
+    def prompt_wallet_selection(self):
+        dialog = Gtk.Dialog()
+        dialog.set_title("Create or select a Turtle Wallet")
+        create_button = dialog.add_button("Create Wallet", 8)
+        select_button = dialog.add_button("Select Existing Wallet", 9)
+        create_button.grab_default()
+        dialog.show_all()
+        # Runs dialog and waits for the response
+        response = dialog.run()
+        dialog.destroy()
+        return response
 
     def __init__(self):
 
@@ -183,21 +312,113 @@ class SplashScreen(object):
         self.window.set_title("TurtleWallet v{0}".format(__version__))
         splash_logger.info("TurtleWallet v{0}".format(__version__))
 
-        # TODO: Option to create or open a wallet
-        wallet_file = self.prompt_wallet_dialog()
-        if wallet_file:
-            splash_logger.info("Using wallet: " + wallet_file) 
-            wallet_password = self.prompt_wallet_password()
-            if wallet_password:
-                # Show the window
-                self.window.show()
-
-                # Start the wallet initialisation on a new thread
-                thread = threading.Thread(target=self.initialise, args=(wallet_file, wallet_password))
-                thread.start()
-            else:
-                splash_logger.info("Invalid password")
-                self.startup_cancelled = True
+        #Check for config file
+        if os.path.exists(global_variables.wallet_config_file):
+            with open(global_variables.wallet_config_file) as cFile:
+                global_variables.wallet_config = json.loads(cFile.read())
         else:
-            splash_logger.warn("No wallet found, given, or created")
-            self.startup_cancelled = True
+            #No config file, create it
+            with open(global_variables.wallet_config_file, 'w') as cFile:
+                defaults = {"hasWallet": False, "walletPath": ""}
+                global_variables.wallet_config = defaults
+                cFile.write(json.dumps(defaults))
+                
+        #If this config has seen a wallet before, skip creation dialog
+        if "hasWallet" in global_variables.wallet_config and global_variables.wallet_config['hasWallet']:
+            #If user has saved path in config for wallet, use it and simply prompt password (They can change wallets at prompt also)
+            if "walletPath" in global_variables.wallet_config and global_variables.wallet_config['walletPath'] and os.path.exists(global_variables.wallet_config['walletPath']):
+                wallet_password = self.prompt_wallet_password()
+                if wallet_password[0] is None:
+                    splash_logger.info("Invalid password")
+                    self.startup_cancelled = True
+                elif wallet_password[0] == False:
+                    #chose to use different wallet, cache old wallet just in case, rewrite config, and reset
+                    global_variables.wallet_config['cachedWalletPath'] = global_variables.wallet_config['walletPath']
+                    global_variables.wallet_config['walletPath'] = ""
+                    with open(global_variables.wallet_config_file, 'w') as cFile:
+                        cFile.write(json.dumps(global_variables.wallet_config))
+                    self.__init__()
+                elif wallet_password[0] == True:
+                    # Show the window
+                    self.window.show()
+
+                    # Start the wallet initialisation on a new thread
+                    thread = threading.Thread(target=self.initialise, args=(global_variables.wallet_config['walletPath'], wallet_password[1]))
+                    thread.start()
+                else:
+                    self.startup_cancelled = True
+            else:
+                #If we are here, it means the user has a wallet, but none are default, prompt for wallet.
+                wallet_file = self.prompt_wallet_dialog()
+                if wallet_file:
+                    splash_logger.info("Using wallet: " + wallet_file) 
+                    wallet_password = self.prompt_wallet_password()
+                    if wallet_password[0] is None:
+                        splash_logger.info("Invalid password")
+                        self.startup_cancelled = True
+                    elif wallet_password[0] == False:
+                        #chose to use different wallet, cache old wallet just in case, rewrite config, and reset
+                        global_variables.wallet_config['cachedWalletPath'] = global_variables.wallet_config['walletPath']
+                        global_variables.wallet_config['walletPath'] = ""
+                        with open(global_variables.wallet_config_file, 'w') as cFile:
+                            cFile.write(json.dumps(global_variables.wallet_config))
+                        self.__init__()
+                    elif wallet_password[0] == True:
+                        # Show the window
+                        self.window.show()
+
+                        # Start the wallet initialisation on a new thread
+                        thread = threading.Thread(target=self.initialise, args=(wallet_file, wallet_password[1]))
+                        thread.start()
+                    else:
+                        self.startup_cancelled = True
+                else:
+                    splash_logger.warn("No wallet found, given, or created")
+                    self.startup_cancelled = True
+        else:
+            #Select or create wallet
+            response = self.prompt_wallet_selection()
+            if response == 8:
+                #create wallet
+                createReturn = self.prompt_wallet_create()
+                if createReturn is None:
+                    splash_logger.warn("No wallet found, given, or created")
+                    self.startup_cancelled = True
+                elif isinstance(createReturn, basestring):
+                    #error on create, display prompt and restart
+                    err_dialog = self.default_dialog(createReturn,"Error on wallet create")
+                    self.__init__()
+                elif isinstance(createReturn, tuple):
+                    self.create_wallet(createReturn[0],createReturn[1])
+                    self.window.show()
+                    # Start the wallet initialisation on a new thread
+                    thread = threading.Thread(target=self.initialise, args=(os.path.join(cur_dir,createReturn[0] + ".wallet"), createReturn[1]))
+                    thread.start()
+            else:
+                #select wallet
+                wallet_file = self.prompt_wallet_dialog()
+                if wallet_file:
+                    splash_logger.info("Using wallet: " + wallet_file) 
+                    wallet_password = self.prompt_wallet_password()
+                    if wallet_password[0] is None:
+                        splash_logger.info("Invalid password")
+                        self.startup_cancelled = True
+                    elif wallet_password[0] == False:
+                        #chose to use different wallet, cache old wallet just in case, rewrite config, and reset
+                        global_variables.wallet_config['cachedWalletPath'] = global_variables.wallet_config['walletPath']
+                        global_variables.wallet_config['walletPath'] = ""
+                        with open(global_variables.wallet_config_file, 'w') as cFile:
+                            cFile.write(json.dumps(global_variables.wallet_config))
+                        self.__init__()
+                    elif wallet_password[0] == True:
+                        # Show the window
+                        self.window.show()
+
+                        # Start the wallet initialisation on a new thread
+                        thread = threading.Thread(target=self.initialise, args=(wallet_file, wallet_password[1]))
+                        thread.start()
+                    else:
+                        self.startup_cancelled = True
+                else:
+                    splash_logger.warn("No wallet found, given, or created")
+                    self.startup_cancelled = True

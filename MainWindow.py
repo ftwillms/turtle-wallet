@@ -15,6 +15,7 @@ from requests import ConnectionError
 from __init__ import __version__
 import global_variables
 import logging
+import json
 
 # Get Logger made in start.py
 main_logger = logging.getLogger('trtl_log.main')
@@ -49,6 +50,42 @@ class MainWindow(object):
             fee_entry.set_sensitive(False)
         else:
             fee_entry.set_sensitive(True)
+            
+    def on_RPCsend_clicked(self, object, data=None):
+        """ Called by GTK when the RPCSend button has been clicked """
+        method = self.builder.get_object("RPCMethodEntry").get_text()
+        args = self.builder.get_object("RPCArgumentsEntry").get_text()
+        
+        #Check the method and arg are somewhat valid
+        if method == "":
+            end_iter = self.RPCbuffer.get_end_iter()
+            self.RPCbuffer.insert(end_iter, "\n\n" + "ERROR: Invalid Method given.")
+            return
+        try:
+            args_dict = json.loads(args)
+        except:
+            end_iter = self.RPCbuffer.get_end_iter()
+            self.RPCbuffer.insert(end_iter, "\n\n" + 'ERROR: Invalid JSON in arguments given. Ex. \n {"blockCount":1000, "firstBlockIndex":1,"addresses":[ "22p4wUHAMndSscvtYErtqUaYrcUTvrZ9zhWwxc3JtkBHAnw4FJqenZyaePSApKWwJ5BjCJz1fKJoA6QHn5j6bVHg8A8dyhp"]}')
+            return
+        
+        #Send the request to RPC server and print results on textview
+        try:
+            r = global_variables.wallet_connection.request(method,args_dict)
+            end_iter = self.RPCbuffer.get_end_iter()
+            self.RPCbuffer.insert(end_iter, "\n\n" + "SUCCESS:\n" + json.dumps(r))
+        except Exception as e:
+            end_iter = self.RPCbuffer.get_end_iter()
+            self.RPCbuffer.insert(end_iter, "\n\n" + "ERROR:\n" + str(e))
+            
+    def on_RPCTextView_size_allocate(self, *args):
+        """The GTK Auto Scrolling method used to scroll RPC view when info is added"""
+        adj = self.RPCScroller.get_vadjustment()
+        adj.set_value(adj.get_upper() - adj.get_page_size())
+        
+    def on_LogTextView_size_allocate(self, *args):
+        """The GTK Auto Scrolling method used to scroll Log view when info is added"""
+        adj = self.LogScroller.get_vadjustment()
+        adj.set_value(adj.get_upper() - adj.get_page_size())
         
 
     def on_AboutMenuItem_activate(self, object, data=None):
@@ -224,6 +261,27 @@ class MainWindow(object):
         main_logger.error("Cannot communicate to wallet daemon!")
         self.builder.get_object("MainStatusLabel").set_label("Cannot communicate to wallet daemon! Is it running?")
         
+    def default_dialog(self, title, message):
+        """
+        Prompt the user for their wallet password
+        :return: Returns the user text or none if they chose to cancel
+        """
+        dialog = Gtk.MessageDialog(self.window,
+                                   Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                   Gtk.MessageType.QUESTION,
+                                   Gtk.ButtonsType.OK_CANCEL,
+                                   title)
+
+        dialog.set_title(message)
+        dialog.show_all()
+        response = dialog.run()
+        if (response == Gtk.ResponseType.OK):
+            dialog.destroy()
+            return True
+        else:
+            dialog.destroy()
+            return False
+        
     def walletd_Watchdog(self):
         """ If we have gotten to this function, this means walletd has either exited or is not functioning properly.
             This function will attempt to recover the lost service."""
@@ -349,11 +407,30 @@ class MainWindow(object):
         # Setup the transaction spin button
         self.setup_spin_button()
         
-        # Setup UI Log Handler
+        # Setup UI Log variables
         uiHandler = UILogHandler(self.builder.get_object("LogBuffer"))
         uiHandler.setLevel(logging.INFO)
         main_logger.addHandler(uiHandler)
+        self.LogScroller = self.builder.get_object("LogScrolledWindow")
         
+        #Setup UI RPC variables
+        self.RPCbuffer = self.builder.get_object("RPCTextView").get_buffer()
+        self.RPCScroller = self.builder.get_object("RPCScrolledWindow")
+        
+        #If wallet is different than cached config wallet, Prompt if user would like to set default wallet
+        with open(global_variables.wallet_config_file,) as configFile:
+            tmpconfig = json.loads(configFile.read())
+        if global_variables.wallet_connection.wallet_file != tmpconfig['walletPath']:
+            if self.default_dialog("Would you like to default to this wallet on start of Turtle Wallet?", "Default Wallet"):
+                global_variables.wallet_config["walletPath"] = global_variables.wallet_connection.wallet_file
+        #cache that user has indeed been inside a wallet before
+        global_variables.wallet_config["hasWallet"]  = True
+        #save config file
+        try:
+            with open(global_variables.wallet_config_file,'w') as cFile:
+                cFile.write(json.dumps(global_variables.wallet_config))
+        except Exception as e:
+            splash_logger.warn("Could not save config file: {}".format(e))
 
         # Start the UI update loop in a new thread
         self.update_thread = threading.Thread(target=self.update_loop)

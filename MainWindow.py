@@ -19,6 +19,16 @@ import logging
 # Get Logger made in start.py
 main_logger = logging.getLogger('trtl_log.main')
 
+# Event Handle to show Logging Event on UI
+class UILogHandler(logging.Handler):
+    def __init__(self, textbuffer):
+        logging.Handler.__init__(self)
+        self.textbuffer = textbuffer
+
+    def handle(self, rec):
+        end_iter = self.textbuffer.get_end_iter()
+        self.textbuffer.insert(end_iter, "\n" + rec.msg)
+
 class MainWindow(object):
     """
     This class is used to interact with the MainWindow glade file
@@ -285,6 +295,11 @@ class MainWindow(object):
 
         # Setup the transaction spin button
         self.setup_spin_button()
+        
+        # Setup UI Log Handler
+        uiHandler = UILogHandler(self.builder.get_object("LogBuffer"))
+        uiHandler.setLevel(logging.INFO)
+        main_logger.addHandler(uiHandler)
 
         # Start the UI update loop in a new thread
         self.update_thread = threading.Thread(target=self.update_loop)

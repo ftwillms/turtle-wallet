@@ -20,15 +20,23 @@ import json
 # Get Logger made in start.py
 main_logger = logging.getLogger('trtl_log.main')
 
-# Event Handle to show Logging Event on UI
 class UILogHandler(logging.Handler):
+    """
+    This class is a custom Logging.Handler that fires off every time
+    a message is added to the applications log. This shows similar to
+    what the log file does, but the verbose is set to INFO instead of 
+    debug to keep logs in UI slim, and logs in the file more beefy.
+    """
     def __init__(self, textbuffer):
         logging.Handler.__init__(self)
         self.textbuffer = textbuffer
 
     def handle(self, rec):
-        end_iter = self.textbuffer.get_end_iter()
-        self.textbuffer.insert(end_iter, "\n" + rec.msg)
+        #everytime logging occurs this handle will add the
+        #message to our log textview, however the UI only
+        #logs relevant things like TX sends, receives, and errors.
+        end_iter = self.textbuffer.get_end_iter() #Gets the position of the end of the string in the logBuffer
+        self.textbuffer.insert(end_iter, "\n" + rec.msg) #Appends new message to the end of buffer, which reflects in LogTextView
 
 class MainWindow(object):
     """
@@ -51,7 +59,7 @@ class MainWindow(object):
         else:
             fee_entry.set_sensitive(True)
             
-    def on_RPCsend_clicked(self, object, data=None):
+    def on_rpcSendButton_clicked(self, object, data=None):
         """ Called by GTK when the RPCSend button has been clicked """
         method = self.builder.get_object("RPCMethodEntry").get_text()
         args = self.builder.get_object("RPCArgumentsEntry").get_text()
@@ -113,19 +121,15 @@ class MainWindow(object):
         """
         r = global_variables.wallet_connection.request("reset")
         if not r:
-            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
-                                       Gtk.ButtonsType.OK, "Wallet Reset")
-            dialog.format_secondary_text(
-                "Wallet has been reset successfully.")
-            main_logger.info("Wallet has been reset successfully.")
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "Wallet Reset")
+            dialog.format_secondary_text(global_variables.message_dict["WALLET_RESET"])
+            main_logger.info(global_variables.message_dict["WALLET_RESET"])
             dialog.run()
             dialog.destroy()
         else:
-            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
-                                       Gtk.ButtonsType.CANCEL, "Error resetting")
-            dialog.format_secondary_text(
-                "The wallet failed to reset!")
-            main_logger.error("The wallet failed to reset!")
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.CANCEL, "Error resetting")
+            dialog.format_secondary_text(global_variables.message_dict["FAILED_WALLET_RESET"])
+            main_logger.error(global_variables.message_dict["FAILED_WALLET_RESET"])
             dialog.run()
             dialog.destroy()
 
@@ -140,19 +144,15 @@ class MainWindow(object):
         """
         r = global_variables.wallet_connection.request("save")
         if not r:
-            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
-                                       Gtk.ButtonsType.OK, "Wallet Saved")
-            dialog.format_secondary_text(
-                "Wallet has been saved successfully.")
-            main_logger.info("Wallet has been saved successfully.")
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,Gtk.ButtonsType.OK, "Wallet Saved")
+            dialog.format_secondary_text(global_variables.message_dict["SUCCESS_WALLET_SAVE"])
+            main_logger.info(global_variables.message_dict["SUCCESS_WALLET_SAVE"])
             dialog.run()
             dialog.destroy()
         else:
-            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
-                                       Gtk.ButtonsType.CANCEL, "Error saving")
-            dialog.format_secondary_text(
-                "The wallet failed to save!")
-            main_logger.error("The wallet failed to save!")
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,Gtk.ButtonsType.CANCEL, "Error saving")
+            dialog.format_secondary_text(global_variables.message_dict["FAILED_WALLET_SAVE"])
+            main_logger.error(global_variables.message_dict["FAILED_WALLET_SAVE"])
             dialog.run()
             dialog.destroy()
 
@@ -185,38 +185,40 @@ class MainWindow(object):
         try:
             amount = int(float(self.builder.get_object("AmountEntry").get_text())*100)
             if amount <= 0:
-                main_logger.warn("TRTL amount is invalid on send")
-                raise ValueError("Amount is an invalid number")
+                main_logger.warn(global_variables.message_dict["INVALID_AMOUNT"])
+                raise ValueError(global_variables.message_dict["INVALID_AMOUNT"])
         except ValueError as e:
-            print("Invalid amount: %s" % e)
-            main_logger.warn("Invalid TRTL amount: %s" % e)
+            print(global_variables.message_dict["INVALID_AMOUNT_EXCEPTION"] % e)
+            main_logger.warn(global_variables.message_dict["INVALID_AMOUNT_EXCEPTION"] % e)
             self.builder.get_object("TransactionStatusLabel")\
                 .set_label("Slow down TRTL bro! The amount needs to be a number greater than 0.")
             return
             
         #Determine Fee Settings
-		#Get feeSuggest Checkbox widget
+        #Get feeSuggest Checkbox widget
         feeSuggest = self.builder.get_object("FeeSuggestionCheck")
-		#Check if it is not checked, if it is checked we use the static fee below (10)
+        #Check if it is not checked, if it is checked we use the static fee
         if not feeSuggest.get_active():
-			#Unchecked, which means we parse and use the fee given in textbox
+            #Unchecked, which means we parse and use the fee given in textbox
             try:
-                amount = int(float(self.builder.get_object("FeeEntry").get_text())*100)
+                fee = int(float(self.builder.get_object("FeeEntry").get_text())*100)
                 if amount <= 0:
-                    main_logger.warn("FEE amount is invalid on send")
-                    raise ValueError("FEE amount is an invalid number")
+                    main_logger.warn(global_variables.message_dict["INVALID_FEE"])
+                    raise ValueError(global_variables.message_dict["INVALID_FEE"])
             except ValueError as e:
-                print("Invalid FEE amount: %s" % e)
-                main_logger.warn("Invalid FEE amount: %s" % e)
+                print(global_variables.message_dict["INVALID_FEE_EXCEPTION"] % e)
+                main_logger.warn(global_variables.message_dict["INVALID_FEE_EXCEPTION"] % e)
                 self.builder.get_object("TransactionStatusLabel")\
                     .set_label("Custom FEE amount is checked with a invalid FEE amount")
                 return
+        else:
+            fee = global_variables.static_fee
             
         # Mixin
         mixin = int(self.builder.get_object("MixinSpinButton").get_text())
         body = {
             'anonymity': mixin,
-            'fee': 10, # 0.1
+            'fee': fee,
             'transfers': [{'amount': amount, 'address': target_address}],
         }
         try:
@@ -228,13 +230,13 @@ class MainWindow(object):
         except ConnectionError as e:
             print("Failed to connect to daemon: {}".format(e))
             self.builder.get_object("TransactionStatusLabel") \
-                .set_label("Failed to send: cannot connect to server.")
-            main_logger.error("Failed to send: cannot connect to server")
+                .set_label(global_variables.message_dict["FAILED_SEND"])
+            main_logger.error(global_variables.message_dict["FAILED_SEND"])
         except ValueError as e:
-            print("Server request error: {}".format(e))
+            print(global_variables.message_dict["FAILED_SEND_EXCEPTION"].format(e))
             self.builder.get_object("TransactionStatusLabel") \
                 .set_label("Failed: {}".format(e))
-            main_logger.error("Server request error: {}".format(e))
+            main_logger.error(global_variables.message_dict["FAILED_SEND_EXCEPTION"].format(e))
 
 
     def clear_send_ui(self):
@@ -261,13 +263,14 @@ class MainWindow(object):
             time.sleep(5) # Wait 5 seconds before doing it again
 
     def set_error_status(self):
-        main_logger.error("Cannot communicate to wallet daemon!")
-        self.builder.get_object("MainStatusLabel").set_label("Cannot communicate to wallet daemon! Is it running?")
+        main_logger.error(global_variables.message_dict["FAILED_DAEMON_COMM"])
+        self.builder.get_object("MainStatusLabel").set_label(global_variables.message_dict["FAILED_DAEMON_COMM"])
         
-    def default_dialog(self, title, message):
+    def MainWindow_generic_dialog(self, title, message):
         """
-        Prompt the user for their wallet password
-        :return: Returns the user text or none if they chose to cancel
+        This is a generic dialog that can be passed a title and message to display, and shows OK and CANCEL buttons.
+        Selecting OK will return True and CANCEL will return False
+        :return: True or False
         """
         dialog = Gtk.MessageDialog(self.window,
                                    Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -278,17 +281,18 @@ class MainWindow(object):
         dialog.set_title(message)
         dialog.show_all()
         response = dialog.run()
+        dialog.destroy()
         if (response == Gtk.ResponseType.OK):
-            dialog.destroy()
             return True
         else:
-            dialog.destroy()
             return False
         
-    def walletd_Watchdog(self):
-        """ If we have gotten to this function, this means walletd has either exited or is not functioning properly.
-            This function will attempt to recover the lost service."""
-        #ConnectionManager does everything for us after we know the daemon is bad. It checks the daemon file location, checks running process, and reboots it.
+    def restart_Daemon(self):
+        """
+        This function gets called when during the refresh cycle, the daemon is found to be possibly dead or hanging.
+        The function simply calls back to the 'start_wallet_daemon' in ConnectionManager, which will restart our
+        daemon for us if needed.
+        """
         global_variables.wallet_connection.start_wallet_daemon(global_variables.wallet_connection.wallet_file,global_variables.wallet_connection.password)
             
 
@@ -304,7 +308,6 @@ class MainWindow(object):
             self.builder.get_object("AvailableBalanceAmountLabel").set_label("{:,.2f}".format(balances['availableBalance']/100.))
             self.builder.get_object("LockedBalanceAmountLabel").set_label("{:,.2f}".format(balances['lockedAmount']/100.))
             
-
             # Request the addresses from the wallet (looks like you can have multiple?)
             addresses = global_variables.wallet_connection.request("getAddresses")['addresses']
             # Load the first address in for now - TODO: Check if multiple addresses need accounting for
@@ -322,10 +325,14 @@ class MainWindow(object):
         except ConnectionError as e:
             main_logger.error(str(e))
             
+            #Checks to see if the daemon failed to respond 3 or more times in a row
             if self.currentTimeout >= self.watchdogTimeout:
+                #Checks to see if we have restarted the daemon 3 or more times already
                 if self.currentTry <= self.watchdogMaxTry:
-                    self.walletd_Watchdog()
+                    #restart the daemon if conditions are meant
+                    self.restart_Daemon()
                 else:
+                    #Here means the daemon failed 3 times in a row, and we restarted it 3 times with no successful connection. At this point we must give up.
                     dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, "Walletd daemon could not be recovered!")
                     dialog.format_secondary_text("Turtle Wallet has tried numerous times to relaunch the needed daemon and has failed. Please relaunch the wallet!")
                     dialog.run()
@@ -410,7 +417,8 @@ class MainWindow(object):
         # Setup the transaction spin button
         self.setup_spin_button()
         
-        # Setup UI Log variables
+        # Setup UILogHandler so the Log Textview gets the same
+        # information as the log file, with less verbose (INFO).
         uiHandler = UILogHandler(self.builder.get_object("LogBuffer"))
         uiHandler.setLevel(logging.INFO)
         main_logger.addHandler(uiHandler)
@@ -420,11 +428,14 @@ class MainWindow(object):
         self.RPCbuffer = self.builder.get_object("RPCTextView").get_buffer()
         self.RPCScroller = self.builder.get_object("RPCScrolledWindow")
         
+        #Set the default fee amount in the FeeEntry widget
+        self.builder.get_object("FeeEntry").set_text(str(float(global_variables.static_fee) / float(100)))
+        
         #If wallet is different than cached config wallet, Prompt if user would like to set default wallet
         with open(global_variables.wallet_config_file,) as configFile:
             tmpconfig = json.loads(configFile.read())
         if global_variables.wallet_connection.wallet_file != tmpconfig['walletPath']:
-            if self.default_dialog("Would you like to default to this wallet on start of Turtle Wallet?", "Default Wallet"):
+            if self.MainWindow_generic_dialog("Would you like to default to this wallet on start of Turtle Wallet?", "Default Wallet"):
                 global_variables.wallet_config["walletPath"] = global_variables.wallet_connection.wallet_file
         #cache that user has indeed been inside a wallet before
         global_variables.wallet_config["hasWallet"]  = True

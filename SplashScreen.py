@@ -12,6 +12,7 @@ from gi.repository import Gtk, GLib
 from __init__ import __version__
 from ConnectionManager import WalletConnection
 import global_variables
+from HelperFunctions import get_wallet_daemon_path
 from requests import ConnectionError
 from MainWindow import MainWindow
 import logging
@@ -52,8 +53,8 @@ class SplashScreen(object):
         # TODO: Handle exceptions gracefully
 
         time.sleep(1)
-        GLib.idle_add(self.update_status, "Connecting to walletd")
-        splash_logger.info("Connecting to walletd, entering wait loop")
+        GLib.idle_add(self.update_status, global_variables.message_dict["CONNECTING_DAEMON"])
+        splash_logger.info(global_variables.message_dict["CONNECTING_DAEMON"])
         # Initialise the wallet connection
         # If we fail to talk to the server so many times, it's hopeless
         fail_count = 0
@@ -68,8 +69,8 @@ class SplashScreen(object):
                     # In the case that the daemon started but stopped, usually do to an
                     # invalid password.
                     if not global_variables.wallet_connection.check_daemon_running():
-                        splash_logger.error("Wallet daemon exited.")
-                        raise ValueError("Wallet daemon exited.")
+                        splash_logger.error(global_variables.message_dict["EXITED_DAEMON"])
+                        raise ValueError(global_variables.message_dict["EXITED_DAEMON"])
                     resp = global_variables.wallet_connection.request('getStatus')
                     block_count = resp['blockCount']
                     known_block_count = resp['knownBlockCount']
@@ -88,14 +89,14 @@ class SplashScreen(object):
                         break
                 except ConnectionError as e:
                     fail_count += 1
-                    print("ConnectionError while waiting for daemon to start: {}".format(e))
-                    splash_logger.warn("ConnectionError while waiting for daemon to start: {}".format(e))
+                    print(global_variables.message_dict["CONNECTION_ERROR_DAEMON"].format(e))
+                    splash_logger.warn(global_variables.message_dict["CONNECTION_ERROR_DAEMON"].format(e))
                     if fail_count >= MAX_FAIL_COUNT:
-                        splash_logger.error("Can't communicate to daemon")
-                        raise ValueError("Can't communicate to daemon")
+                        splash_logger.error(global_variables.message_dict["NO_COMM_DAEMON"])
+                        raise ValueError(global_variables.message_dict["NO_COMM_DAEMON"])
         except ValueError as e:
-            splash_logger.error("Failed to connect to walletd: {}".format(e))
-            print("Failed to connect to walletd: {}".format(e))
+            splash_logger.error(global_variables.message_dict["FAILED_CONNECT_DAEMON"].format(e))
+            print(global_variables.message_dict["FAILED_CONNECT_DAEMON"].format(e))
             GLib.idle_add(self.update_status, "Failed: {}".format(e))
             time.sleep(3)
             GLib.idle_add(Gtk.main_quit)
@@ -103,26 +104,14 @@ class SplashScreen(object):
         # Open the main window using glib
         GLib.idle_add(self.open_main_window)
         
-    def get_wallet_daemon_path(self):
-        """
-        Tries to find where walletd exists. Looks for TURTLE_HOME env and falls
-        back to looking at the current working directory.
-        For Windows (nt), the extension .exe is appended.
-        :return: path to the walletd executable
-        
-        Note: We need a duplicate of this function in the splash to find the exe,
-        to create a wallet before connection happens.
-        """
-        walletd_filename = "walletd" if os.name != 'nt' else "walletd.exe"
-        walletd_exec = os.path.join(os.getenv('TURTLE_HOME', '.'), walletd_filename)
-        if not os.path.isfile(walletd_exec):
-            WC_logger.error("Cannot find wallet at location: {}".format(walletd_exec))
-            raise ValueError("Cannot find wallet at location: {}".format(walletd_exec))
-
-        return walletd_exec
         
     def create_wallet(self, name, password):
-        walletd = Popen([self.get_wallet_daemon_path(), '-w', os.path.join(cur_dir, name + ".wallet"), '-p', password, '-g'])
+        """
+        This function is responsible for creating a new wallet from the daemon.
+        The user gives the name and password on a prompt, which is passed here.
+        :return: Process Object Return Code
+        """
+        walletd = Popen([get_wallet_daemon_path(), '-w', os.path.join(cur_dir, name + ".wallet"), '-p', password, '-g'])
         return walletd.wait()
 
     def prompt_wallet_dialog(self):
@@ -150,14 +139,24 @@ class SplashScreen(object):
         dialog = Gtk.MessageDialog(self.window,
                                    Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                    Gtk.MessageType.QUESTION,
-                                   Gtk.ButtonsType.OK_CANCEL,
-                                   "Please enter the wallet password:")
+                                   Gtk.ButtonsType.OK_CANCEL)
 
         dialog.set_title("Wallet Password")
         dialog.add_button("Use different wallet", 9)
 
         # Setup UI for entry box in the dialog
         dialog_box = dialog.get_content_area()
+        
+        #Logo control
+        logoimg = Gtk.Image()
+        logoimg.set_from_file ("TurtleLogo.png")
+        
+        #password label
+        passLabel = Gtk.Label()
+        passLabel.set_markup("<b>Please enter the wallet password:</b>")
+        passLabel.set_margin_bottom(5)
+        
+        #password entry control
         userEntry = Gtk.Entry()
         userEntry.set_visibility(False)
         userEntry.set_invisible_char("*")
@@ -167,7 +166,9 @@ class SplashScreen(object):
         userEntry.connect("activate", lambda w: dialog.response(Gtk.ResponseType.OK))
         # Pack the back right to left, no expanding, no filling, 0 padding
         dialog_box.pack_end(userEntry, False, False, 0)
-
+        dialog_box.pack_end(passLabel, False, False, 0)
+        dialog_box.pack_end(logoimg, False, False, 0)
+        dialog.set_position(Gtk.WindowPosition.CENTER)
         dialog.show_all()
         # Runs dialog and waits for the response
         response = dialog.run()
@@ -181,10 +182,11 @@ class SplashScreen(object):
         else:
             return (None,"")
 
-    def default_dialog(self, title, message):
+    def SplashScreen_generic_dialog(self, title, message):
         """
-        Prompt the user for their wallet password
-        :return: Returns the user text or none if they chose to cancel
+        This is a generic dialog that can be passed a title and message to display, and shows OK and CANCEL buttons.
+        Selecting OK will return True and CANCEL will return False
+        :return: True or False
         """
         dialog = Gtk.MessageDialog(self.window,
                                    Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -195,18 +197,19 @@ class SplashScreen(object):
         dialog.set_title(message)
         dialog.show_all()
         response = dialog.run()
+        dialog.destroy()
         if (response == Gtk.ResponseType.OK):
-            dialog.destroy()
             return True
         else:
-            dialog.destroy()
             return False
         
             
     def prompt_wallet_create(self):
         """
-        Prompt the user for their wallet password
-        :return: Returns the user text or none if they chose to cancel
+        Prompt the user to create a wallet, if they selected to make a wallet.
+        User eneters a new for a wallet and a password. The password is
+        checked twice and compared to ensure its correct.
+        :return: Returns a Tuple of Wallet Name and Password on success, string error on fail, or None on Cancel
         """
         dialog = Gtk.MessageDialog(self.window,
                                    Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -219,8 +222,6 @@ class SplashScreen(object):
         # Setup UI for entry box in the dialog
         dialog_box = dialog.get_content_area()
         
-        #nameLabel = Gtk.Label("Wallet Name:")
-        
         namelEntry = Gtk.Entry()
         namelEntry.set_visibility(True)
         namelEntry.set_size_request(250, 0)
@@ -232,34 +233,33 @@ class SplashScreen(object):
         passEntry.set_invisible_char("*")
         passEntry.set_size_request(250, 0)
         
-        passLabel2 = Gtk.Label("Confirm Password:")
+        passLabelConfirm = Gtk.Label("Confirm Password:")
         
-        passEntry2 = Gtk.Entry()
-        passEntry2.set_visibility(False)
-        passEntry2.set_invisible_char("*")
-        passEntry2.set_size_request(250, 0)
+        passEntryConfirm = Gtk.Entry()
+        passEntryConfirm.set_visibility(False)
+        passEntryConfirm.set_invisible_char("*")
+        passEntryConfirm.set_size_request(250, 0)
         # Trigger the dialog's response when a user hits ENTER on the text box.
         # The lamba here is a wrapper to get around the default arguments
-        passEntry2.connect("activate", lambda w: dialog.response(Gtk.ResponseType.OK))
+        passEntryConfirm.connect("activate", lambda w: dialog.response(Gtk.ResponseType.OK))
         # Pack the back right to left, no expanding, no filling, 0 padding
-        dialog_box.pack_end(passEntry2, False, False, 0)
-        dialog_box.pack_end(passLabel2, False, False, 0)
+        dialog_box.pack_end(passEntryConfirm, False, False, 0)
+        dialog_box.pack_end(passLabelConfirm, False, False, 0)
         dialog_box.pack_end(passEntry, False, False, 0)
         dialog_box.pack_end(passLabel, False, False, 0)
         dialog_box.pack_end(namelEntry, False, False, 0)
-        #dialog_box.pack_end(nameLabel, False, False, 0)
 
         dialog.show_all()
         # Runs dialog and waits for the response
         response = dialog.run()
         nameText = namelEntry.get_text()
         passText = passEntry.get_text()
-        pass2Text = passEntry2.get_text()
+        passConfirmText = passEntryConfirm.get_text()
         dialog.destroy()
         if (response == Gtk.ResponseType.OK):
             if nameText == "":
                 return "Invalid name for wallet"
-            elif passText != pass2Text:
+            elif passText != passConfirmText:
                 return "Given passwords do not match"
             else:
                 #return Tuple of information
@@ -269,10 +269,25 @@ class SplashScreen(object):
             return None
             
     def prompt_wallet_selection(self):
+        """
+        Prompt normally shown the first time wallet is ran.
+        It will ask the user to select a old wallet or create one.
+        """
         dialog = Gtk.Dialog()
-        dialog.set_title("Create or select a Turtle Wallet")
+        dialog.set_title("TurtleWallet v{0}".format(__version__))
+        
+        dialog_box = dialog.get_content_area()
+        logoimg = Gtk.Image()
+        logoimg.set_from_file ("TurtleLogo.png")
+        selectLabel = Gtk.Label()
+        selectLabel.set_markup("<b>Create or select a Turtle Wallet:</b>")
+        selectLabel.set_margin_bottom(5)
+        dialog_box.pack_end(selectLabel, False, False, 0)
+        dialog_box.pack_end(logoimg, False, False, 0)
         create_button = dialog.add_button("Create Wallet", 8)
         select_button = dialog.add_button("Select Existing Wallet", 9)
+        dialog.set_position(Gtk.WindowPosition.CENTER)
+        dialog.show_all()
         create_button.grab_default()
         dialog.show_all()
         # Runs dialog and waits for the response
@@ -373,7 +388,7 @@ class SplashScreen(object):
                     else:
                         self.startup_cancelled = True
                 else:
-                    splash_logger.warn("No wallet found, given, or created")
+                    splash_logger.warn(global_variables.message_dict["NO_INFO"])
                     self.startup_cancelled = True
         else:
             #Select or create wallet
@@ -382,11 +397,11 @@ class SplashScreen(object):
                 #create wallet
                 createReturn = self.prompt_wallet_create()
                 if createReturn is None:
-                    splash_logger.warn("No wallet found, given, or created")
+                    splash_logger.warn(global_variables.message_dict["NO_INFO"])
                     self.startup_cancelled = True
                 elif isinstance(createReturn, basestring):
                     #error on create, display prompt and restart
-                    err_dialog = self.default_dialog(createReturn,"Error on wallet create")
+                    err_dialog = self.SplashScreen_generic_dialog(createReturn,"Error on wallet create")
                     self.__init__()
                 elif isinstance(createReturn, tuple):
                     self.create_wallet(createReturn[0],createReturn[1])
@@ -420,5 +435,5 @@ class SplashScreen(object):
                     else:
                         self.startup_cancelled = True
                 else:
-                    splash_logger.warn("No wallet found, given, or created")
+                    splash_logger.warn(global_variables.message_dict["NO_INFO"])
                     self.startup_cancelled = True

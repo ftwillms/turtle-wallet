@@ -649,7 +649,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkLabel" id="FeeUnits">
+                          <object class="GtkLabel" id="FeeUnitsLabel">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="margin_left">5</property>
@@ -707,7 +707,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                 </child>
                 <child>
                   <object class="GtkButton" id="SendButton">
-                    <property name="label" translatable="yes">  Send  </property>
+                    <property name="label" translatable="yes">Send</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
@@ -825,7 +825,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkBox" id="RPCcontrols">
+                  <object class="GtkBox" id="rpcControlsBox">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -874,7 +874,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="RPCsend">
+                      <object class="GtkButton" id="rpcSendButton">
                         <property name="label" translatable="yes">Send</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -883,7 +883,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                         <property name="margin_right">5</property>
                         <property name="margin_top">5</property>
                         <property name="margin_bottom">5</property>
-                        <signal name="clicked" handler="on_RPCsend_clicked" swapped="no"/>
+                        <signal name="clicked" handler="on_rpcSendButton_clicked" swapped="no"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>

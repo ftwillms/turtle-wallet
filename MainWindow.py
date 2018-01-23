@@ -195,8 +195,11 @@ class MainWindow(object):
             return
             
         #Determine Fee Settings
+		#Get feeSuggest Checkbox widget
         feeSuggest = self.builder.get_object("FeeSuggestionCheck")
+		#Check if it is not checked, if it is checked we use the static fee below (10)
         if not feeSuggest.get_active():
+			#Unchecked, which means we parse and use the fee given in textbox
             try:
                 amount = int(float(self.builder.get_object("FeeEntry").get_text())*100)
                 if amount <= 0:

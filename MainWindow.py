@@ -148,17 +148,46 @@ class MainWindow(object):
         :param data: unused
         :return:
         """
-        r = global_variables.wallet_connection.request("reset")
-        if not r:
+        try:
+            r = global_variables.wallet_connection.request("reset")
             dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "Wallet Reset")
             dialog.format_secondary_text(global_variables.message_dict["WALLET_RESET"])
             main_logger.info(global_variables.message_dict["WALLET_RESET"])
             dialog.run()
             dialog.destroy()
-        else:
+        except ValueError as e:
             dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.CANCEL, "Error resetting")
             dialog.format_secondary_text(global_variables.message_dict["FAILED_WALLET_RESET"])
             main_logger.error(global_variables.message_dict["FAILED_WALLET_RESET"])
+            dialog.run()
+            dialog.destroy()        
+
+    def on_ExportKeysMenuItem_activate(self, object, data=None):
+        """
+        Export the wallet's secret keys
+        :param object:
+        :param data:
+        :return:
+        """
+        try:
+            # Capture the secret view key
+            r = global_variables.wallet_connection.request("getViewKey")
+            view_secret_key = r.get('viewSecretKey', 'N/A')
+            source_address = self.builder.get_object("AddressTextBox").get_text()
+            # Capture the secret spend key for this specific address
+            r = global_variables.wallet_connection.request("getSpendKeys", params={'address': source_address})
+            spend_secret_key = r.get('spendSecretKey', 'N/A')
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
+                                       Gtk.ButtonsType.OK, "Secret Keys")
+            dialog.format_secondary_text("View secret: {}\nSpend secret: {}".format(view_secret_key, spend_secret_key))
+            dialog.run()
+            dialog.destroy()
+        except ValueError as e:
+            # The request will throw a value error if the RPC server sends us an error response
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
+                                       Gtk.ButtonsType.CANCEL, "Error exporting keys")
+            dialog.format_secondary_text(
+                "Failed to retrieve keys from the wallet!")
             dialog.run()
             dialog.destroy()
 
@@ -171,19 +200,20 @@ class MainWindow(object):
         :param data: unused
         :return:
         """
-        r = global_variables.wallet_connection.request("save")
-        if not r:
+        try:
+            r = global_variables.wallet_connection.request("save")
             dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,Gtk.ButtonsType.OK, "Wallet Saved")
             dialog.format_secondary_text(global_variables.message_dict["SUCCESS_WALLET_SAVE"])
             main_logger.info(global_variables.message_dict["SUCCESS_WALLET_SAVE"])
             dialog.run()
             dialog.destroy()
-        else:
+        except ValueError as e:
             dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,Gtk.ButtonsType.CANCEL, "Error saving")
             dialog.format_secondary_text(global_variables.message_dict["FAILED_WALLET_SAVE"])
             main_logger.error(global_variables.message_dict["FAILED_WALLET_SAVE"])
             dialog.run()
             dialog.destroy()
+
 
     def on_SendButton_clicked(self, object, data=None):
         """

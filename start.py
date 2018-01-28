@@ -8,22 +8,32 @@ import global_variables
 
 import signal
 import gi
+import argparse
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from SplashScreen import SplashScreen
 import logging
+from logging.handlers import RotatingFileHandler
 
 # create logger for entire wallet application
 logger = logging.getLogger('trtl_log')
-logger.setLevel(logging.DEBUG)
-# create handle to log file that will hold all events
-fh = logging.FileHandler('trtl.log')
-fh.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
+# create handle to log file that will hold all events. This log file
+# is rotating, up to 20MB and up to 5 back up logs.
+fh = RotatingFileHandler('trtl.log', maxBytes=20971520, backupCount=5)
+fh.setLevel(logging.INFO)
 
-# --- This is the logger for CLI, we do not need it for now.
-# ch = logging.StreamHandler()
-# ch.setLevel(logging.ERROR)
-# ---
+#check if a argument has been set
+parser = argparse.ArgumentParser()
+#add verbosity argument
+parser.add_argument('-v', '--verbose', help='Change verbosity to DEBUG', required=False, action='store_true')
+args = parser.parse_args()
+
+#check if verbosity arg is set
+verbose = args.verbose
+if verbose:
+    logger.setLevel(logging.DEBUG)
+    fh.setLevel(logging.DEBUG)
 
 # create formatter and add it to the handlers
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

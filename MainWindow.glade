@@ -104,8 +104,8 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                         <property name="label">Reset Wallet</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="use_underline">True</property>
-                        <property name="use_stock">True</property>
+                        <property name="image">image4</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_ResetMenuItem_activate" swapped="no"/>
                       </object>
                     </child>
@@ -114,9 +114,29 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                         <property name="label">Save Wallet</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="use_underline">True</property>
-                        <property name="use_stock">True</property>
+                        <property name="image">image3</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_SaveMenuItem_activate" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="LogsMenuItem">
+                        <property name="label">Show Logs</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="image">image1</property>
+                        <property name="use_stock">False</property>
+                        <signal name="activate" handler="on_LogsMenuItem_activate" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="RPCMenuItem">
+                        <property name="label">Show RPC Console</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="image">image2</property>
+                        <property name="use_stock">False</property>
+                        <signal name="activate" handler="on_RPCMenuItem_activate" swapped="no"/>
                       </object>
                     </child>
                   </object>
@@ -787,13 +807,13 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
             </child>
             <child type="tab">
               <object class="GtkLabel" id="LogTabLabel">
-                <property name="visible">True</property>
+                <property name="width_request">0</property>
+                <property name="height_request">0</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Logs</property>
               </object>
               <packing>
                 <property name="position">2</property>
-                <property name="tab_fill">False</property>
               </packing>
             </child>
             <child>
@@ -918,7 +938,6 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
             </child>
             <child type="tab">
               <object class="GtkLabel" id="RPCTabLabel">
-                <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">RPC Console</property>
               </object>
@@ -985,5 +1004,26 @@ deleteDelayedTransaction	-	deleteDelayedTransaction() method deletes a specified
 sendDelayedTransaction	-	sendDelayedTransaction() method sends a specified delayed transaction.
 sendFusionTransaction	-	sendFusionTransaction() method creates and sends a fusion transaction.
 estimateFusion	-	estimateFusion() method allows to estimate a number of outputs that can be optimized with fusion transactions.</property>
+  </object>
+  <object class="GtkImage" id="image1">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-file</property>
+  </object>
+  <object class="GtkImage" id="image2">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-network</property>
+  </object>
+  <object class="GtkImage" id="image3">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-save</property>
+    <property name="use_fallback">True</property>
+  </object>
+  <object class="GtkImage" id="image4">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-refresh</property>
   </object>
 </interface>

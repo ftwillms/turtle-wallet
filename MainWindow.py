@@ -59,6 +59,24 @@ class MainWindow(object):
         else:
             fee_entry.set_sensitive(True)
             
+    def on_LogsMenuItem_activate(self, object, data=None):
+        """Called by GTK when the LogsMenuItem Menu Item is Clicked"""
+        #Shows the Logs Window
+        noteBook = self.builder.get_object("MainNotebook")
+        logBox = self.builder.get_object("LogBox")
+        if noteBook.page_num(logBox) == -1:
+            logLabel = self.builder.get_object("LogTabLabel")
+            noteBook.append_page(logBox,logLabel)
+        
+    def on_RPCMenuItem_activate(self, object, data=None):
+        """Called by GTK when the LogsMenuItem Menu Item is Clicked"""
+        #Shows the RPC Window
+        noteBook = self.builder.get_object("MainNotebook")
+        RPCBox = self.builder.get_object("RPCBox")
+        if noteBook.page_num(RPCBox) == -1:
+            RPCLabel = self.builder.get_object("RPCTabLabel")
+            noteBook.append_page(RPCBox,RPCLabel)
+            
     def on_rpcSendButton_clicked(self, object, data=None):
         """ Called by GTK when the RPCSend button has been clicked """
         method = self.builder.get_object("RPCMethodEntry").get_text()
@@ -450,6 +468,13 @@ class MainWindow(object):
         self.update_thread = threading.Thread(target=self.update_loop)
         self.update_thread.daemon = True
         self.update_thread.start()
+        
+        #Get MainNotebook
+        noteBook = self.builder.get_object("MainNotebook")
+        #Remove Log tab
+        noteBook.remove_page(2)
+        #Remove RPC tab
+        noteBook.remove_page(2)
 
         # Finally, show the window
         self.window.show_all()

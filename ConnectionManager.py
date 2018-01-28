@@ -15,6 +15,7 @@ import os.path
 from subprocess import Popen
 import global_variables
 import logging
+import hashlib
 
 # Get Logger made in start.py
 WC_logger = logging.getLogger('trtl_log.walletConnection')
@@ -61,7 +62,7 @@ class WalletConnection(object):
         #gets the existing daemon executble path
         existing_daemon_path = existing_daemon.exe()
         #gets md5 of existing daemon executabe
-        existing_daemon_hash =hashlib.md5(open(existing_daemon, 'rb').read()).hexdigest()
+        existing_daemon_hash =hashlib.md5(open(existing_daemon_path, 'rb').read()).hexdigest()
         #gets md5 of known good daemon executabe
         good_daemon_hash = hashlib.md5(open(goodDaemonPath, 'rb').read()).hexdigest()
         #compares hashes, if they do not match, this is not our daemon, and we return False

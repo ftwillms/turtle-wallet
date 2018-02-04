@@ -54,26 +54,37 @@ class MainWindow(object):
     def on_FeeSuggestionCheck_clicked(self, object, data=None):
         """Called by GTK when the FeeSuggestionCheck Checkbox is Toggled"""
         fee_entry = self.builder.get_object("FeeEntry")
+        #Check if FeeSuggestionCheck is checked
         if object.get_active():
+            #disable fee entry
             fee_entry.set_sensitive(False)
         else:
+            #enable fee entry
             fee_entry.set_sensitive(True)
             
     def on_LogsMenuItem_activate(self, object, data=None):
-        """Called by GTK when the LogsMenuItem Menu Item is Clicked"""
+        """Called by GTK when the LogsMenuItem Menu Item is Clicked
+            This shows the log page on the main window"""
         #Shows the Logs Window
         noteBook = self.builder.get_object("MainNotebook")
+        #Get Log Page
         logBox = self.builder.get_object("LogBox")
+        #Check if it is already viewed
         if noteBook.page_num(logBox) == -1:
+            #If not get the label and page, and show it
             logLabel = self.builder.get_object("LogTabLabel")
             noteBook.append_page(logBox,logLabel)
         
     def on_RPCMenuItem_activate(self, object, data=None):
-        """Called by GTK when the LogsMenuItem Menu Item is Clicked"""
+        """Called by GTK when the LogsMenuItem Menu Item is Clicked
+            This shows the RPC page on the main window"""
         #Shows the RPC Window
         noteBook = self.builder.get_object("MainNotebook")
+        #Get RPC Page
         RPCBox = self.builder.get_object("RPCBox")
+        #Check if it is already viewed
         if noteBook.page_num(RPCBox) == -1:
+            #If not get the label and page, and show it
             RPCLabel = self.builder.get_object("RPCTabLabel")
             noteBook.append_page(RPCBox,RPCLabel)
             
@@ -449,6 +460,7 @@ class MainWindow(object):
         #Set the default fee amount in the FeeEntry widget
         self.builder.get_object("FeeEntry").set_text(str(float(global_variables.static_fee) / float(100)))
         
+        
         #If wallet is different than cached config wallet, Prompt if user would like to set default wallet
         with open(global_variables.wallet_config_file,) as configFile:
             tmpconfig = json.loads(configFile.read())
@@ -469,7 +481,7 @@ class MainWindow(object):
         self.update_thread.daemon = True
         self.update_thread.start()
         
-        #Get MainNotebook
+        #These tabs should not be shown, even on show all
         noteBook = self.builder.get_object("MainNotebook")
         #Remove Log tab
         noteBook.remove_page(2)
@@ -478,6 +490,8 @@ class MainWindow(object):
 
         # Finally, show the window
         self.window.show_all()
+        
+  
 
     def setup_spin_button(self):
         """

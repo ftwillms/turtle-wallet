@@ -104,7 +104,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                         <property name="label">Reset Wallet</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="image">image4</property>
+                        <property name="image">ResetMenuActiveImage</property>
                         <property name="use_stock">False</property>
                         <signal name="activate" handler="on_ResetMenuItem_activate" swapped="no"/>
                       </object>
@@ -114,7 +114,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                         <property name="label">Save Wallet</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="image">image3</property>
+                        <property name="image">SaveMenuActiveImage</property>
                         <property name="use_stock">False</property>
                         <signal name="activate" handler="on_SaveMenuItem_activate" swapped="no"/>
                       </object>
@@ -124,7 +124,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                         <property name="label">Show Logs</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="image">image1</property>
+                        <property name="image">LogsMenuActivateImage</property>
                         <property name="use_stock">False</property>
                         <signal name="activate" handler="on_LogsMenuItem_activate" swapped="no"/>
                       </object>
@@ -134,7 +134,7 @@ See the &lt;a href="http://www.gnu.org/licenses/lgpl-3.0.html"&gt;GNU Lesser Gen
                         <property name="label">Show RPC Console</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="image">image2</property>
+                        <property name="image">RPCMenuActiveImage</property>
                         <property name="use_stock">False</property>
                         <signal name="activate" handler="on_RPCMenuItem_activate" swapped="no"/>
                       </object>
@@ -1005,23 +1005,23 @@ sendDelayedTransaction	-	sendDelayedTransaction() method sends a specified delay
 sendFusionTransaction	-	sendFusionTransaction() method creates and sends a fusion transaction.
 estimateFusion	-	estimateFusion() method allows to estimate a number of outputs that can be optimized with fusion transactions.</property>
   </object>
-  <object class="GtkImage" id="image1">
+  <object class="GtkImage" id="LogsMenuActivateImage">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-file</property>
   </object>
-  <object class="GtkImage" id="image2">
+  <object class="GtkImage" id="RPCMenuActiveImage">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-network</property>
   </object>
-  <object class="GtkImage" id="image3">
+  <object class="GtkImage" id="SaveMenuActiveImage">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-save</property>
     <property name="use_fallback">True</property>
   </object>
-  <object class="GtkImage" id="image4">
+  <object class="GtkImage" id="ResetMenuActiveImage">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-refresh</property>

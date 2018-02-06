@@ -85,6 +85,17 @@ class WalletConnection(object):
         existing_daemon = self.check_daemon_running()
         #gets known good daemon path
         good_daemon = get_wallet_daemon_path()
+        # Determine walletd args
+        walletd_args = [get_wallet_daemon_path(), '-w', wallet_file, '-p', password]
+        remote_daemon_address = global_variables.wallet_config.get('remoteDaemonAddress', None)
+        # Evaluate if a remote daemon is to be used, else we use the local argument
+        if remote_daemon_address:
+            walletd_args.extend(["--daemon-address", remote_daemon_address])
+            remote_daemon_port = global_variables.wallet_config.get('remoteDaemonPort', None)
+            if remote_daemon_port:
+                walletd_args.extend(["--daemon-port", remote_daemon_port])
+        else:
+            walletd_args.append("--local")
         #checks if existing daemon has been found
         if existing_daemon:
             print(global_variables.message_dict["EXISTING_DAEMON"].format(existing_daemon.pid))
@@ -96,13 +107,13 @@ class WalletConnection(object):
                 #if a invlaid daemon is found, we terminate it and start a new one
                 existing_daemon.terminate()
                 existing_daemon.wait()
-                walletd = Popen([get_wallet_daemon_path(), '-w', wallet_file, '-p', password, '--local'])
+                walletd = Popen(walletd_args)
             else:
                 #existing daemon found to be valid, simply return the existing process object
                 return existing_daemon
         else:
             #No existing daemon found, start new instance
-            walletd = Popen([get_wallet_daemon_path(), '-w', wallet_file, '-p', password, '--local'])
+            walletd = Popen(walletd_args)
 
         # Poll the daemon, if poll returns None the daemon is active.
         while walletd.poll():

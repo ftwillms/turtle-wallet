@@ -17,6 +17,8 @@ import global_variables
 import logging
 import json
 
+from HelperFunctions import copy_text
+
 # Get Logger made in start.py
 main_logger = logging.getLogger('trtl_log.main')
 
@@ -49,7 +51,7 @@ class MainWindow(object):
     def on_CopyButton_clicked(self, object, data=None):
         """Called by GTK when the copy button is clicked"""
         self.builder.get_object("AddressTextBox")
-        Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(self.builder.get_object("AddressTextBox").get_text(), -1)
+        copy_text(self.builder.get_object("AddressTextBox").get_text())
         
     def on_FeeSuggestionCheck_clicked(self, object, data=None):
         """Called by GTK when the FeeSuggestionCheck Checkbox is Toggled"""
@@ -164,7 +166,8 @@ class MainWindow(object):
 
     def on_ExportKeysMenuItem_activate(self, object, data=None):
         """
-        Export the wallet's secret keys
+        Export the wallet's secret keys to a dialog with a button
+        enabling users to copy the keys to the clipboard.
         :param object:
         :param data:
         :return:
@@ -179,8 +182,16 @@ class MainWindow(object):
             spend_secret_key = r.get('spendSecretKey', 'N/A')
             dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.INFO,
                                        Gtk.ButtonsType.OK, "Secret Keys")
-            dialog.format_secondary_text("View secret: {}\nSpend secret: {}".format(view_secret_key, spend_secret_key))
-            dialog.run()
+            # Find the widget responsible for the OK button
+            ok_btn = dialog.get_widget_for_response(response_id=Gtk.ResponseType.OK)
+            # Modify the OK button label to Copy
+            ok_btn.set_label("Copy")
+            keys_text = "View secret: {}\nSpend secret: {}".format(view_secret_key, spend_secret_key)
+            dialog.format_secondary_text(keys_text)
+            response = dialog.run()
+            if response == Gtk.ResponseType.OK:
+                # Copy the keys to the clipboard
+                copy_text(keys_text)
             dialog.destroy()
         except ValueError as e:
             # The request will throw a value error if the RPC server sends us an error response
